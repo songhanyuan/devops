@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Build output
+frontend/dist/
+backend/server
+agent/agent
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env / Secrets
+.env
+*.pem
+*.key
+
+# Go
+*.exe
+*.test
+*.out
+go.sum
+
+# Docker volumes
+data/
+
+# Logs
+*.log
+
+# Temp
+tmp/
