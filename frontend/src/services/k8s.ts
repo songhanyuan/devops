@@ -65,6 +65,51 @@ export interface K8sResource {
   status: string
   images: string[]
   created_at: string
+  labels?: Record<string, string>
+  schedule?: string
+  last_schedule?: string
+  yaml?: string
+}
+
+export interface K8sIngress {
+  name: string
+  namespace: string
+  hosts: string[]
+  rules: { host: string; paths: { path: string; backend: string; port: number }[] }[]
+  created_at: string
+  yaml?: string
+}
+
+export interface K8sConfigMap {
+  name: string
+  namespace: string
+  data: Record<string, string>
+  created_at: string
+  yaml?: string
+}
+
+export interface K8sSecret {
+  name: string
+  namespace: string
+  type: string
+  data: Record<string, string>
+  created_at: string
+  yaml?: string
+}
+
+export interface CreateWorkloadParams {
+  name: string
+  namespace: string
+  replicas?: number
+  labels?: Record<string, string>
+  image: string
+  ports?: { containerPort: number; protocol?: string }[]
+  env?: { name: string; value: string }[]
+  cpu_request?: string
+  cpu_limit?: string
+  memory_request?: string
+  memory_limit?: string
+  schedule?: string
 }
 
 export const k8sService = {
@@ -98,12 +143,111 @@ export const k8sService = {
   getNamespaces: (id: string) =>
     api.get<unknown, { data: K8sNamespace[] }>(`/clusters/${id}/namespaces`),
 
+  // Workloads
   getDeployments: (id: string, namespace?: string) =>
     api.get<unknown, { data: K8sResource[] }>(`/clusters/${id}/deployments`, { params: { namespace } }),
+
+  getStatefulSets: (id: string, namespace?: string) =>
+    api.get<unknown, { data: K8sResource[] }>(`/clusters/${id}/statefulsets`, { params: { namespace } }),
+
+  getDaemonSets: (id: string, namespace?: string) =>
+    api.get<unknown, { data: K8sResource[] }>(`/clusters/${id}/daemonsets`, { params: { namespace } }),
+
+  getCronJobs: (id: string, namespace?: string) =>
+    api.get<unknown, { data: K8sResource[] }>(`/clusters/${id}/cronjobs`, { params: { namespace } }),
 
   getPods: (id: string, namespace?: string) =>
     api.get<unknown, { data: K8sResource[] }>(`/clusters/${id}/pods`, { params: { namespace } }),
 
+  // Deployment operations
+  createDeployment: (id: string, data: CreateWorkloadParams) =>
+    api.post<unknown, { data: K8sResource }>(`/clusters/${id}/deployments`, data),
+
+  scaleDeployment: (id: string, namespace: string, name: string, replicas: number) =>
+    api.put(`/clusters/${id}/deployments/${name}/scale`, { namespace, replicas }),
+
+  restartDeployment: (id: string, namespace: string, name: string) =>
+    api.post(`/clusters/${id}/deployments/${name}/restart`, { namespace }),
+
+  deleteDeployment: (id: string, namespace: string, name: string) =>
+    api.delete(`/clusters/${id}/deployments/${name}`, { params: { namespace } }),
+
+  // StatefulSet operations
+  createStatefulSet: (id: string, data: CreateWorkloadParams) =>
+    api.post<unknown, { data: K8sResource }>(`/clusters/${id}/statefulsets`, data),
+
+  scaleStatefulSet: (id: string, namespace: string, name: string, replicas: number) =>
+    api.put(`/clusters/${id}/statefulsets/${name}/scale`, { namespace, replicas }),
+
+  deleteStatefulSet: (id: string, namespace: string, name: string) =>
+    api.delete(`/clusters/${id}/statefulsets/${name}`, { params: { namespace } }),
+
+  // DaemonSet operations
+  createDaemonSet: (id: string, data: CreateWorkloadParams) =>
+    api.post<unknown, { data: K8sResource }>(`/clusters/${id}/daemonsets`, data),
+
+  deleteDaemonSet: (id: string, namespace: string, name: string) =>
+    api.delete(`/clusters/${id}/daemonsets/${name}`, { params: { namespace } }),
+
+  // CronJob operations
+  createCronJob: (id: string, data: CreateWorkloadParams) =>
+    api.post<unknown, { data: K8sResource }>(`/clusters/${id}/cronjobs`, data),
+
+  deleteCronJob: (id: string, namespace: string, name: string) =>
+    api.delete(`/clusters/${id}/cronjobs/${name}`, { params: { namespace } }),
+
+  // Services
   getServices: (id: string, namespace?: string) =>
     api.get<unknown, { data: K8sResource[] }>(`/clusters/${id}/services`, { params: { namespace } }),
+
+  createService: (id: string, data: { name: string; namespace: string; type: string; ports: { port: number; targetPort: number; protocol?: string; nodePort?: number }[]; selector: Record<string, string> }) =>
+    api.post<unknown, { data: K8sResource }>(`/clusters/${id}/services`, data),
+
+  deleteService: (id: string, namespace: string, name: string) =>
+    api.delete(`/clusters/${id}/services/${name}`, { params: { namespace } }),
+
+  // Ingresses
+  getIngresses: (id: string, namespace?: string) =>
+    api.get<unknown, { data: K8sIngress[] }>(`/clusters/${id}/ingresses`, { params: { namespace } }),
+
+  createIngress: (id: string, data: { name: string; namespace: string; rules: { host: string; paths: { path: string; backend: string; port: number }[] }[] }) =>
+    api.post<unknown, { data: K8sIngress }>(`/clusters/${id}/ingresses`, data),
+
+  deleteIngress: (id: string, namespace: string, name: string) =>
+    api.delete(`/clusters/${id}/ingresses/${name}`, { params: { namespace } }),
+
+  // ConfigMaps
+  getConfigMaps: (id: string, namespace?: string) =>
+    api.get<unknown, { data: K8sConfigMap[] }>(`/clusters/${id}/configmaps`, { params: { namespace } }),
+
+  createConfigMap: (id: string, data: { name: string; namespace: string; data: Record<string, string> }) =>
+    api.post<unknown, { data: K8sConfigMap }>(`/clusters/${id}/configmaps`, data),
+
+  updateConfigMap: (id: string, namespace: string, name: string, data: Record<string, string>) =>
+    api.put<unknown, { data: K8sConfigMap }>(`/clusters/${id}/configmaps/${name}`, { namespace, data }),
+
+  deleteConfigMap: (id: string, namespace: string, name: string) =>
+    api.delete(`/clusters/${id}/configmaps/${name}`, { params: { namespace } }),
+
+  // Secrets
+  getSecrets: (id: string, namespace?: string) =>
+    api.get<unknown, { data: K8sSecret[] }>(`/clusters/${id}/secrets`, { params: { namespace } }),
+
+  createSecret: (id: string, data: { name: string; namespace: string; type: string; data: Record<string, string> }) =>
+    api.post<unknown, { data: K8sSecret }>(`/clusters/${id}/secrets`, data),
+
+  deleteSecret: (id: string, namespace: string, name: string) =>
+    api.delete(`/clusters/${id}/secrets/${name}`, { params: { namespace } }),
+
+  // Generic workload resource fetch (helper)
+  getWorkloads: (id: string, kind: string, namespace?: string) => {
+    const endpointMap: Record<string, string> = {
+      Deployment: 'deployments',
+      StatefulSet: 'statefulsets',
+      DaemonSet: 'daemonsets',
+      CronJob: 'cronjobs',
+    }
+    const endpoint = endpointMap[kind] || 'deployments'
+    return api.get<unknown, { data: K8sResource[] }>(`/clusters/${id}/${endpoint}`, { params: { namespace } })
+  },
 }
