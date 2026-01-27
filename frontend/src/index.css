@@ -33,172 +33,98 @@ body {
   background: transparent;
 }
 
-/* Login page - split screen */
+/* Login page - clean centered */
 .login-page {
-  display: flex;
   min-height: 100vh;
-}
-
-.login-left {
-  flex: 1;
-  background: linear-gradient(160deg, #1a1a2e 0%, #16213e 40%, #0f3460 100%);
   display: flex;
-  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  padding: 60px;
-  position: relative;
-  overflow: hidden;
+  background: #f0f2f5;
+  background-image:
+    radial-gradient(ellipse at 20% 50%, rgba(99, 102, 241, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(59, 130, 246, 0.05) 0%, transparent 50%),
+    radial-gradient(ellipse at 60% 80%, rgba(139, 92, 246, 0.04) 0%, transparent 50%);
 }
 
-.login-left::before {
-  content: '';
-  position: absolute;
-  width: 600px;
-  height: 600px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(79, 70, 229, 0.12), transparent 70%);
-  top: -200px;
-  right: -200px;
-}
-
-.login-left::after {
-  content: '';
-  position: absolute;
+.login-card-wrapper {
   width: 400px;
-  height: 400px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.08), transparent 70%);
-  bottom: -100px;
-  left: -100px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 48px 40px 36px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  text-align: center;
 }
 
-.login-left-content {
-  position: relative;
-  z-index: 1;
-  max-width: 480px;
-}
-
-.login-title {
+.login-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 20px;
+  background: linear-gradient(135deg, #e0e7ff, #ede9fe);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 28px;
+  color: #4f46e5;
+}
+
+.login-heading {
+  font-size: 22px;
   font-weight: 600;
-  color: #ffffff;
-  margin: 32px 0 12px;
-  letter-spacing: 1px;
+  color: #1f2937;
+  margin: 0 0 6px;
 }
 
-.login-subtitle {
-  font-size: 16px;
-  color: rgba(255, 255, 255, 0.55);
-  margin: 0 0 48px;
-  line-height: 1.6;
+.login-desc {
+  font-size: 14px;
+  color: #9ca3af;
+  margin: 0 0 32px;
 }
 
-.login-features {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+.login-form {
+  text-align: left;
 }
 
-.login-feature-item {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  color: rgba(255, 255, 255, 0.75);
-  font-size: 15px;
-}
-
-.login-feature-icon {
-  width: 40px;
-  height: 40px;
+.login-form .ant-input-affix-wrapper {
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.08);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  color: rgba(255, 255, 255, 0.8);
+  padding: 10px 14px;
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s;
 }
 
-.login-left-footer {
-  position: relative;
-  z-index: 1;
-  margin-top: 60px;
-  color: rgba(255, 255, 255, 0.25);
-  font-size: 13px;
+.login-form .ant-input-affix-wrapper:hover,
+.login-form .ant-input-affix-wrapper-focused {
+  border-color: #818cf8;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.08);
 }
 
-.login-right {
-  width: 520px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #ffffff;
-  padding: 60px;
-}
-
-.login-form-wrapper {
-  width: 100%;
-  max-width: 360px;
-}
-
-.login-form-header {
-  margin-bottom: 40px;
-}
-
-.login-form-header h2 {
-  font-size: 26px;
-  font-weight: 700;
-  color: #1a1a2e;
-  margin: 0 0 8px;
-}
-
-.login-form-header p {
-  font-size: 15px;
-  color: #8c8c8c;
-  margin: 0;
-}
-
-.login-form-wrapper .ant-form-item-label > label {
-  font-weight: 500;
-  color: #434343;
-}
-
-.login-form-wrapper .ant-input-lg,
-.login-form-wrapper .ant-input-affix-wrapper-lg {
-  height: 48px;
-  border-radius: 10px;
+.login-form .ant-input-affix-wrapper .ant-input-prefix {
+  color: #c0c4cc;
+  margin-right: 8px;
 }
 
 .login-btn {
-  height: 48px !important;
+  height: 46px !important;
   border-radius: 10px !important;
-  font-size: 16px !important;
+  font-size: 15px !important;
   font-weight: 600 !important;
-  background: linear-gradient(135deg, #4f46e5, #6366f1) !important;
   border: none !important;
-  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4) !important;
-  transition: all 0.3s !important;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25) !important;
+  transition: all 0.2s !important;
 }
 
 .login-btn:hover {
-  box-shadow: 0 6px 20px rgba(79, 70, 229, 0.5) !important;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35) !important;
   transform: translateY(-1px);
 }
 
-.login-form-footer {
+.login-footer {
   text-align: center;
-  color: #bfbfbf;
-  font-size: 13px;
-  margin-top: 24px;
-}
-
-@media (max-width: 900px) {
-  .login-left {
-    display: none;
-  }
-  .login-right {
-    width: 100%;
-  }
+  color: #c0c4cc;
+  font-size: 12px;
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid #f3f4f6;
 }
 
 /* Stat cards with gradient backgrounds */

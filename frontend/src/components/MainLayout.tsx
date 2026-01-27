@@ -24,7 +24,6 @@ import {
 } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 import { useAuthStore } from '@/stores/auth'
-import Logo from '@/components/Logo'
 
 const { Header, Sider, Content } = Layout
 
@@ -176,11 +175,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         }}
       >
         <div className="sidebar-logo">
-          {collapsed ? (
-            <Logo color="#fff" width={32} />
-          ) : (
-            <Logo color="#fff" width={130} />
-          )}
+          <span style={{ color: '#fff', fontSize: collapsed ? 16 : 18, fontWeight: 700, letterSpacing: 1, whiteSpace: 'nowrap' }}>
+            {collapsed ? 'D' : 'DevOps 平台'}
+          </span>
         </div>
         <Menu
           theme="dark"
