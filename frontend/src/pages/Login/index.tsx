@@ -26,6 +26,38 @@ const Login: React.FC = () => {
 
   return (
     <div className="login-page">
+      {/* Floating shapes */}
+      <div style={{
+        position: 'absolute',
+        width: 300,
+        height: 300,
+        borderRadius: '50%',
+        background: 'rgba(255,255,255,0.05)',
+        top: '10%',
+        left: '5%',
+        animation: 'float 15s ease-in-out infinite',
+      }} />
+      <div style={{
+        position: 'absolute',
+        width: 200,
+        height: 200,
+        borderRadius: '50%',
+        background: 'rgba(255,255,255,0.03)',
+        bottom: '15%',
+        right: '10%',
+        animation: 'float 20s ease-in-out infinite reverse',
+      }} />
+      <div style={{
+        position: 'absolute',
+        width: 150,
+        height: 150,
+        borderRadius: '50%',
+        background: 'rgba(255,255,255,0.04)',
+        top: '50%',
+        right: '20%',
+        animation: 'float 18s ease-in-out infinite',
+      }} />
+
       <div className="login-card-wrapper">
         {/* Icon */}
         <div className="login-icon">
@@ -33,7 +65,7 @@ const Login: React.FC = () => {
         </div>
 
         <h1 className="login-heading">DevOps 运维平台</h1>
-        <p className="login-desc">请登录您的账号</p>
+        <p className="login-desc">统一管理您的服务器和应用</p>
 
         <Form
           name="login"
@@ -67,7 +99,7 @@ const Login: React.FC = () => {
           </Form.Item>
 
           <Form.Item name="remember" valuePropName="checked" style={{ marginBottom: 28 }}>
-            <Checkbox>记住我</Checkbox>
+            <Checkbox>记住登录状态</Checkbox>
           </Form.Item>
 
           <Form.Item style={{ marginBottom: 0 }}>
@@ -85,7 +117,8 @@ const Login: React.FC = () => {
         </Form>
 
         <div className="login-footer">
-          默认账号: admin / admin123
+          <div style={{ marginBottom: 8 }}>演示账号: admin / admin123</div>
+          <div style={{ color: '#c0c4cc', fontSize: 12 }}>DevOps Platform v1.0</div>
         </div>
       </div>
     </div>

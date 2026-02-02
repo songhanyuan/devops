@@ -24,6 +24,9 @@ import {
   DesktopOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  SearchOutlined,
 } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import { hostService, Host, HostGroup } from '@/services/host'
@@ -116,12 +119,6 @@ const HostList: React.FC = () => {
     }
   }
 
-  const statusMap: Record<number, { text: string; color: string }> = {
-    0: { text: '离线', color: 'error' },
-    1: { text: '在线', color: 'success' },
-    2: { text: '未知', color: 'default' },
-  }
-
   const onlineCount = hosts.filter((h) => h.status === 1).length
   const offlineCount = hosts.filter((h) => h.status === 0).length
 
@@ -130,25 +127,96 @@ const HostList: React.FC = () => {
       title: '名称',
       dataIndex: 'name',
       key: 'name',
-      width: 150,
-      render: (name: string) => <span style={{ fontWeight: 500 }}>{name}</span>,
+      width: 160,
+      render: (name: string, record: Host) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{
+            width: 36,
+            height: 36,
+            borderRadius: 10,
+            background: record.status === 1
+              ? 'linear-gradient(135deg, rgba(17, 153, 142, 0.1) 0%, rgba(56, 239, 125, 0.1) 100%)'
+              : 'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(248, 113, 113, 0.1) 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <DesktopOutlined style={{
+              fontSize: 18,
+              color: record.status === 1 ? '#11998e' : '#ef4444'
+            }} />
+          </div>
+          <span style={{ fontWeight: 600, color: '#1a1a2e' }}>{name}</span>
+        </div>
+      ),
     },
     {
       title: 'IP 地址',
       dataIndex: 'ip',
       key: 'ip',
-      width: 140,
-      render: (ip: string) => <code style={{ fontSize: 13, background: '#f5f5f5', padding: '2px 6px', borderRadius: 4 }}>{ip}</code>,
+      width: 150,
+      render: (ip: string) => (
+        <code style={{
+          background: 'linear-gradient(135deg, #f5f7fa 0%, #f0f2f5 100%)',
+          padding: '4px 10px',
+          borderRadius: 6,
+          fontSize: 13,
+          fontFamily: "'SF Mono', Monaco, monospace",
+          color: '#5c5c6d'
+        }}>
+          {ip}
+        </code>
+      ),
     },
-    { title: '端口', dataIndex: 'port', key: 'port', width: 70 },
-    { title: '用户名', dataIndex: 'username', key: 'username', width: 100 },
+    {
+      title: '端口',
+      dataIndex: 'port',
+      key: 'port',
+      width: 80,
+      render: (port: number) => <span style={{ color: '#8c8c8c' }}>{port}</span>,
+    },
+    {
+      title: '用户名',
+      dataIndex: 'username',
+      key: 'username',
+      width: 100,
+      render: (username: string) => <span style={{ color: '#5c5c6d' }}>{username}</span>,
+    },
     {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      width: 80,
+      width: 100,
       render: (status: number) => (
-        <Tag color={statusMap[status]?.color}>{statusMap[status]?.text}</Tag>
+        status === 1 ? (
+          <Tag
+            icon={<CheckCircleOutlined />}
+            style={{
+              background: '#ecfdf5',
+              borderColor: '#a7f3d0',
+              color: '#059669',
+              borderRadius: 6,
+              padding: '2px 10px',
+            }}
+          >
+            在线
+          </Tag>
+        ) : status === 0 ? (
+          <Tag
+            icon={<CloseCircleOutlined />}
+            style={{
+              background: '#fef2f2',
+              borderColor: '#fecaca',
+              color: '#dc2626',
+              borderRadius: 6,
+              padding: '2px 10px',
+            }}
+          >
+            离线
+          </Tag>
+        ) : (
+          <Tag style={{ borderRadius: 6, padding: '2px 10px' }}>未知</Tag>
+        )
       ),
     },
     {
@@ -156,21 +224,63 @@ const HostList: React.FC = () => {
       dataIndex: 'group',
       key: 'group',
       width: 120,
-      render: (group: HostGroup) => group?.name ? <Tag>{group.name}</Tag> : <span style={{ color: '#bfbfbf' }}>-</span>,
+      render: (group: HostGroup) => group?.name ? (
+        <Tag style={{
+          background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
+          borderColor: 'rgba(102, 126, 234, 0.3)',
+          color: '#667eea',
+          borderRadius: 6,
+          padding: '2px 10px',
+        }}>
+          {group.name}
+        </Tag>
+      ) : <span style={{ color: '#bfbfbf' }}>-</span>,
     },
-    { title: '操作系统', dataIndex: 'os', key: 'os', width: 120 },
+    {
+      title: '操作系统',
+      dataIndex: 'os',
+      key: 'os',
+      width: 130,
+      render: (os: string) => <span style={{ color: '#8c8c8c' }}>{os || '-'}</span>,
+    },
     {
       title: '操作',
       key: 'action',
-      width: 220,
+      width: 180,
       render: (_, record) => (
-        <Space>
+        <Space size={4}>
           <Tooltip title="测试连接">
-            <Button size="small" icon={<ApiOutlined />} onClick={() => handleTestConnection(record.id)} />
+            <Button
+              type="text"
+              size="small"
+              icon={<ApiOutlined />}
+              onClick={() => handleTestConnection(record.id)}
+              style={{ color: '#667eea' }}
+            />
           </Tooltip>
-          <Button size="small" onClick={() => handleEdit(record)}>编辑</Button>
-          <Popconfirm title="确定删除此主机?" onConfirm={() => handleDelete(record.id)}>
-            <Button size="small" danger>删除</Button>
+          <Tooltip title="编辑">
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => handleEdit(record)}
+              style={{ color: '#8c8c8c' }}
+            />
+          </Tooltip>
+          <Popconfirm
+            title="确定删除此主机?"
+            description="删除后无法恢复"
+            onConfirm={() => handleDelete(record.id)}
+            okButtonProps={{ danger: true }}
+          >
+            <Tooltip title="删除">
+              <Button
+                type="text"
+                size="small"
+                icon={<DeleteOutlined />}
+                style={{ color: '#8c8c8c' }}
+              />
+            </Tooltip>
           </Popconfirm>
         </Space>
       ),
@@ -178,7 +288,7 @@ const HostList: React.FC = () => {
   ]
 
   return (
-    <div>
+    <div className="fade-in">
       <div className="page-header">
         <div className="page-header-left">
           <h2>主机管理</h2>
@@ -186,32 +296,84 @@ const HostList: React.FC = () => {
         </div>
       </div>
 
-      <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
-        <Col xs={8}>
-          <Card className="stat-card" bordered={false} style={{ background: '#f0f5ff' }}>
-            <Statistic title="主机总数" value={total} prefix={<DesktopOutlined style={{ color: '#4f46e5' }} />} />
+      <Row gutter={[20, 20]} style={{ marginBottom: 24 }}>
+        <Col xs={24} sm={8}>
+          <Card
+            bordered={false}
+            style={{
+              borderRadius: 16,
+              background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%)',
+              border: '1px solid rgba(102, 126, 234, 0.1)',
+            }}
+          >
+            <Statistic
+              title={<span style={{ color: '#8c8c8c' }}>主机总数</span>}
+              value={total}
+              prefix={<DesktopOutlined style={{ color: '#667eea', marginRight: 8 }} />}
+              valueStyle={{ color: '#1a1a2e', fontWeight: 700 }}
+            />
           </Card>
         </Col>
-        <Col xs={8}>
-          <Card className="stat-card" bordered={false} style={{ background: '#f6ffed' }}>
-            <Statistic title="在线" value={onlineCount} prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />} />
+        <Col xs={24} sm={8}>
+          <Card
+            bordered={false}
+            style={{
+              borderRadius: 16,
+              background: 'linear-gradient(135deg, rgba(17, 153, 142, 0.05) 0%, rgba(56, 239, 125, 0.05) 100%)',
+              border: '1px solid rgba(17, 153, 142, 0.1)',
+            }}
+          >
+            <Statistic
+              title={<span style={{ color: '#8c8c8c' }}>在线</span>}
+              value={onlineCount}
+              prefix={<CheckCircleOutlined style={{ color: '#11998e', marginRight: 8 }} />}
+              valueStyle={{ color: '#11998e', fontWeight: 700 }}
+            />
           </Card>
         </Col>
-        <Col xs={8}>
-          <Card className="stat-card" bordered={false} style={{ background: '#fff2f0' }}>
-            <Statistic title="离线" value={offlineCount} prefix={<CloseCircleOutlined style={{ color: '#ff4d4f' }} />} />
+        <Col xs={24} sm={8}>
+          <Card
+            bordered={false}
+            style={{
+              borderRadius: 16,
+              background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, rgba(248, 113, 113, 0.05) 100%)',
+              border: '1px solid rgba(239, 68, 68, 0.1)',
+            }}
+          >
+            <Statistic
+              title={<span style={{ color: '#8c8c8c' }}>离线</span>}
+              value={offlineCount}
+              prefix={<CloseCircleOutlined style={{ color: '#ef4444', marginRight: 8 }} />}
+              valueStyle={{ color: '#ef4444', fontWeight: 700 }}
+            />
           </Card>
         </Col>
       </Row>
 
       <Card className="section-card" bordered={false}>
-        <div style={{ padding: '0 0 16px', display: 'flex', justifyContent: 'space-between' }}>
+        <div style={{ padding: '0 0 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Space>
-            <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={handleAdd}
+              style={{ borderRadius: 8 }}
+            >
               添加主机
             </Button>
+            <Input
+              placeholder="搜索主机..."
+              prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+              style={{ width: 220, borderRadius: 8 }}
+            />
           </Space>
-          <Button icon={<ReloadOutlined />} onClick={fetchHosts}>刷新</Button>
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={fetchHosts}
+            style={{ borderRadius: 8 }}
+          >
+            刷新
+          </Button>
         </div>
 
         <Table
@@ -235,17 +397,19 @@ const HostList: React.FC = () => {
         open={modalVisible}
         onOk={handleSubmit}
         onCancel={() => setModalVisible(false)}
-        width={600}
+        width={640}
+        okText="确定"
+        cancelText="取消"
       >
-        <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
+        <Form form={form} layout="vertical" style={{ marginTop: 20 }}>
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="name" label="名称" rules={[{ required: true }]}>
+              <Form.Item name="name" label="名称" rules={[{ required: true, message: '请输入主机名称' }]}>
                 <Input placeholder="主机名称" />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="ip" label="IP 地址" rules={[{ required: true }]}>
+              <Form.Item name="ip" label="IP 地址" rules={[{ required: true, message: '请输入 IP 地址' }]}>
                 <Input placeholder="192.168.1.1" />
               </Form.Item>
             </Col>
@@ -290,7 +454,7 @@ const HostList: React.FC = () => {
             </Col>
           </Row>
           <Form.Item name="description" label="描述">
-            <Input.TextArea rows={2} />
+            <Input.TextArea rows={3} placeholder="主机描述信息..." />
           </Form.Item>
         </Form>
       </Modal>

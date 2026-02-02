@@ -277,14 +277,15 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           zIndex: 10,
           display: 'flex',
           flexDirection: 'column',
-          background: '#1a1a2e',
+          background: 'linear-gradient(180deg, #1a1a2e 0%, #16162a 100%)',
           overflow: 'hidden',
           transition: dragging.current ? 'none' : 'width 0.2s, min-width 0.2s, max-width 0.2s',
+          boxShadow: '4px 0 24px rgba(0, 0, 0, 0.08)',
         }}
       >
         <div className="sidebar-logo">
-          <span style={{ color: '#fff', fontSize: collapsed ? 16 : 18, fontWeight: 700, letterSpacing: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {collapsed ? 'D' : 'DevOps 平台'}
+          <span style={{ fontSize: collapsed ? 18 : 20, fontWeight: 700, letterSpacing: collapsed ? 0 : 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {collapsed ? 'D' : 'DevOps'}
           </span>
         </div>
         <div style={{ flex: 1, overflow: 'auto' }}>
@@ -358,11 +359,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         </Header>
         <Content
           style={{
-            margin: 20,
-            padding: 24,
-            background: '#f5f5f8',
+            margin: 24,
+            padding: 0,
+            background: 'linear-gradient(135deg, #f5f7fa 0%, #f8f9fc 100%)',
             borderRadius: 0,
-            minHeight: 'calc(100vh - 64px - 40px)',
+            minHeight: 'calc(100vh - 64px - 48px)',
           }}
         >
           {children}
