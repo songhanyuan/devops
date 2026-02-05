@@ -29,6 +29,8 @@ func InitDatabase(cfg *config.DatabaseConfig) (*gorm.DB, error) {
 		&model.User{},
 		&model.Role{},
 		&model.Permission{},
+		&model.UserGroup{},
+		&model.ResourcePermission{},
 		&model.AuditLog{},
 		&model.Host{},
 		&model.HostGroup{},

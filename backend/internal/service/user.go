@@ -1,6 +1,9 @@
 package service
 
 import (
+	"fmt"
+	"time"
+
 	"devops/internal/model"
 	"devops/internal/repository"
 
@@ -125,16 +128,76 @@ func (s *UserService) ResetPassword(id uuid.UUID, newPassword string) error {
 // Role service
 type RoleService struct {
 	roleRepo *repository.RoleRepository
+	permRepo *repository.PermissionRepository
 }
 
-func NewRoleService(roleRepo *repository.RoleRepository) *RoleService {
-	return &RoleService{roleRepo: roleRepo}
+func NewRoleService(roleRepo *repository.RoleRepository, permRepo *repository.PermissionRepository) *RoleService {
+	return &RoleService{
+		roleRepo: roleRepo,
+		permRepo: permRepo,
+	}
 }
 
 func (s *RoleService) List() ([]model.Role, error) {
 	return s.roleRepo.List()
 }
 
+func (s *RoleService) ListWithPermissions() ([]model.Role, error) {
+	return s.roleRepo.ListWithPermissions()
+}
+
 func (s *RoleService) GetByID(id uuid.UUID) (*model.Role, error) {
 	return s.roleRepo.GetByID(id)
+}
+
+func (s *RoleService) Create(name, description string) (*model.Role, error) {
+	// 自动生成编码
+	code := generateRoleCode(name)
+	role := &model.Role{
+		Name:        name,
+		Code:        code,
+		Description: description,
+	}
+	if err := s.roleRepo.Create(role); err != nil {
+		return nil, err
+	}
+	return s.roleRepo.GetByID(role.ID)
+}
+
+func generateRoleCode(name string) string {
+	// 简单生成：使用时间戳 + 随机数
+	return fmt.Sprintf("role_%d", time.Now().UnixNano()/1000000)
+}
+
+func (s *RoleService) Update(id uuid.UUID, name, description string) (*model.Role, error) {
+	role, err := s.roleRepo.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+	if name != "" {
+		role.Name = name
+	}
+	if description != "" {
+		role.Description = description
+	}
+	if err := s.roleRepo.Update(role); err != nil {
+		return nil, err
+	}
+	return s.roleRepo.GetByID(id)
+}
+
+func (s *RoleService) Delete(id uuid.UUID) error {
+	return s.roleRepo.Delete(id)
+}
+
+func (s *RoleService) GetPermissions(roleID uuid.UUID) ([]model.Permission, error) {
+	return s.permRepo.GetByRoleID(roleID)
+}
+
+func (s *RoleService) SetPermissions(roleID uuid.UUID, permissionIDs []uuid.UUID) error {
+	return s.permRepo.UpdateRolePermissions(roleID, permissionIDs)
+}
+
+func (s *RoleService) GetAllPermissions() ([]model.Permission, error) {
+	return s.permRepo.List()
 }

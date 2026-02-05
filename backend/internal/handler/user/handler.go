@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"devops/internal/middleware"
+	"devops/internal/model"
 	"devops/internal/pkg/response"
 	"devops/internal/service"
 
@@ -38,6 +39,18 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
 	roles := r.Group("/roles")
 	{
 		roles.GET("", h.ListRoles)
+		roles.GET("/:id", h.GetRole)
+		roles.POST("", middleware.RequireAdmin(), h.CreateRole)
+		roles.PUT("/:id", middleware.RequireAdmin(), h.UpdateRole)
+		roles.DELETE("/:id", middleware.RequireAdmin(), h.DeleteRole)
+		roles.GET("/:id/permissions", h.GetRolePermissions)
+		roles.PUT("/:id/permissions", middleware.RequireAdmin(), h.SetRolePermissions)
+	}
+
+	permissions := r.Group("/permissions")
+	{
+		permissions.GET("", h.ListPermissions)
+		permissions.GET("/tree", h.GetPermissionTree)
 	}
 }
 
@@ -167,13 +180,202 @@ func (h *Handler) ResetPassword(c *gin.Context) {
 }
 
 func (h *Handler) ListRoles(c *gin.Context) {
-	roles, err := h.roleService.List()
+	withPerms := c.Query("with_permissions") == "true"
+	var roles interface{}
+	var err error
+
+	if withPerms {
+		roles, err = h.roleService.ListWithPermissions()
+	} else {
+		roles, err = h.roleService.List()
+	}
+
 	if err != nil {
 		response.ServerError(c, err.Error())
 		return
 	}
 
 	response.Success(c, roles)
+}
+
+func (h *Handler) GetRole(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "无效的ID")
+		return
+	}
+
+	role, err := h.roleService.GetByID(id)
+	if err != nil {
+		response.NotFound(c, "角色不存在")
+		return
+	}
+
+	response.Success(c, role)
+}
+
+func (h *Handler) CreateRole(c *gin.Context) {
+	var req struct {
+		Name        string `json:"name" binding:"required"`
+		Description string `json:"description"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	role, err := h.roleService.Create(req.Name, req.Description)
+	if err != nil {
+		response.ServerError(c, err.Error())
+		return
+	}
+
+	response.Success(c, role)
+}
+
+func (h *Handler) UpdateRole(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "无效的ID")
+		return
+	}
+
+	var req struct {
+		Name        string `json:"name"`
+		Description string `json:"description"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	role, err := h.roleService.Update(id, req.Name, req.Description)
+	if err != nil {
+		response.ServerError(c, err.Error())
+		return
+	}
+
+	response.Success(c, role)
+}
+
+func (h *Handler) DeleteRole(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "无效的ID")
+		return
+	}
+
+	if err := h.roleService.Delete(id); err != nil {
+		response.ServerError(c, err.Error())
+		return
+	}
+
+	response.Success(c, nil)
+}
+
+func (h *Handler) GetRolePermissions(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "无效的ID")
+		return
+	}
+
+	permissions, err := h.roleService.GetPermissions(id)
+	if err != nil {
+		response.ServerError(c, err.Error())
+		return
+	}
+
+	response.Success(c, permissions)
+}
+
+func (h *Handler) SetRolePermissions(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "无效的ID")
+		return
+	}
+
+	var req struct {
+		PermissionIDs []uuid.UUID `json:"permission_ids"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	if err := h.roleService.SetPermissions(id, req.PermissionIDs); err != nil {
+		response.ServerError(c, err.Error())
+		return
+	}
+
+	response.Success(c, nil)
+}
+
+func (h *Handler) ListPermissions(c *gin.Context) {
+	permissions, err := h.roleService.GetAllPermissions()
+	if err != nil {
+		response.ServerError(c, err.Error())
+		return
+	}
+
+	response.Success(c, permissions)
+}
+
+func (h *Handler) GetPermissionTree(c *gin.Context) {
+	permissions, err := h.roleService.GetAllPermissions()
+	if err != nil {
+		response.ServerError(c, err.Error())
+		return
+	}
+
+	// 构建树结构
+	tree := buildPermissionTree(permissions)
+	response.Success(c, tree)
+}
+
+type PermissionNode struct {
+	ID       uuid.UUID         `json:"id"`
+	Name     string            `json:"name"`
+	Code     string            `json:"code"`
+	Type     string            `json:"type"`
+	Resource string            `json:"resource"`
+	Action   string            `json:"action"`
+	ParentID *uuid.UUID        `json:"parent_id"`
+	Children []*PermissionNode `json:"children,omitempty"`
+}
+
+func buildPermissionTree(permissions []model.Permission) []*PermissionNode {
+	nodeMap := make(map[uuid.UUID]*PermissionNode)
+	var roots []*PermissionNode
+
+	// 创建节点
+	for _, p := range permissions {
+		node := &PermissionNode{
+			ID:       p.ID,
+			Name:     p.Name,
+			Code:     p.Code,
+			Type:     p.Type,
+			Resource: p.Resource,
+			Action:   p.Action,
+			ParentID: p.ParentID,
+		}
+		nodeMap[p.ID] = node
+	}
+
+	// 建立关系
+	for _, p := range permissions {
+		node := nodeMap[p.ID]
+		if p.ParentID == nil {
+			roots = append(roots, node)
+		} else if parent, ok := nodeMap[*p.ParentID]; ok {
+			parent.Children = append(parent.Children, node)
+		} else {
+			roots = append(roots, node)
+		}
+	}
+
+	return roots
 }
 
 func getIntParam(c *gin.Context, key string, defaultVal int) int {

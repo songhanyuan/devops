@@ -32,6 +32,9 @@ import {
   GatewayOutlined,
   FileTextOutlined,
   LockOutlined,
+  AuditOutlined,
+  UsergroupAddOutlined,
+  SafetyOutlined,
 } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 import { useAuthStore } from '@/stores/auth'
@@ -115,7 +118,10 @@ const menuItems: MenuProps['items'] = [
     icon: <TeamOutlined />,
     label: '系统管理',
     children: [
-      { key: '/system/users', label: '用户管理' },
+      { key: '/system/users', label: '用户管理', icon: <UserOutlined /> },
+      { key: '/system/groups', label: '用户分组', icon: <UsergroupAddOutlined /> },
+      { key: '/system/roles', label: '角色权限', icon: <SafetyOutlined /> },
+      { key: '/system/audit-logs', label: '审计日志', icon: <AuditOutlined /> },
     ],
   },
 ]
@@ -145,6 +151,9 @@ const breadcrumbMap: Record<string, string> = {
   '/config': '配置中心',
   '/system': '系统管理',
   '/system/users': '用户管理',
+  '/system/groups': '用户分组',
+  '/system/roles': '角色权限',
+  '/system/audit-logs': '审计日志',
 }
 
 const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {

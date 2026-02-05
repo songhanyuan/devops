@@ -47,6 +47,12 @@ func (r *RoleRepository) Delete(id uuid.UUID) error {
 
 func (r *RoleRepository) List() ([]model.Role, error) {
 	var roles []model.Role
+	err := r.db.Order("created_at ASC").Find(&roles).Error
+	return roles, err
+}
+
+func (r *RoleRepository) ListWithPermissions() ([]model.Role, error) {
+	var roles []model.Role
 	err := r.db.Preload("Permissions").Order("created_at ASC").Find(&roles).Error
 	return roles, err
 }
@@ -65,6 +71,15 @@ func (r *RoleRepository) UpdatePermissions(roleID uuid.UUID, permissionIDs []uui
 	}
 
 	return r.db.Model(role).Association("Permissions").Replace(permissions)
+}
+
+// GetUserWithRole 获取用户及其角色信息
+func (r *RoleRepository) GetUserWithRole(userID uuid.UUID) (*model.User, error) {
+	var user model.User
+	if err := r.db.Preload("Role").First(&user, "id = ?", userID).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
 }
 
 // Initialize default roles

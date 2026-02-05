@@ -10,6 +10,9 @@ import PipelineList from '@/pages/Deploy/PipelineList'
 import VersionList from '@/pages/Deploy/VersionList'
 import ConfigList from '@/pages/Config/ConfigList'
 import UserList from '@/pages/System/UserList'
+import GroupList from '@/pages/System/GroupList'
+import RolePermissionList from '@/pages/System/RolePermissionList'
+import AuditLogList from '@/pages/System/AuditLogList'
 import ClusterList from '@/pages/K8s/ClusterList'
 import ClusterDetail from '@/pages/K8s/ClusterDetail'
 import WorkloadList from '@/pages/K8s/WorkloadList'
@@ -61,6 +64,9 @@ function App() {
                 <Route path="/k8s/pods" element={<Navigate to="/k8s/workloads/pods" replace />} />
                 <Route path="/config" element={<ConfigList />} />
                 <Route path="/system/users" element={<UserList />} />
+                <Route path="/system/groups" element={<GroupList />} />
+                <Route path="/system/roles" element={<RolePermissionList />} />
+                <Route path="/system/audit-logs" element={<AuditLogList />} />
               </Routes>
             </MainLayout>
           </PrivateRoute>

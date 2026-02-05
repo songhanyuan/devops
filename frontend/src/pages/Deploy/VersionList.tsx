@@ -179,8 +179,8 @@ const PipelineList: React.FC = () => {
       title: 'Commit',
       dataIndex: 'commit_id',
       key: 'commit_id',
-      width: 100,
-      render: (v: string) => <code className="code-muted">{v}</code>,
+      width: 120,
+      render: (v: string) => <code style={{ whiteSpace: 'nowrap' }}>{v}</code>,
     },
     {
       title: '提交信息',
