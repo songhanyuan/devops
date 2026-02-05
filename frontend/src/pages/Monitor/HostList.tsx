@@ -155,18 +155,7 @@ const HostList: React.FC = () => {
       dataIndex: 'ip',
       key: 'ip',
       width: 150,
-      render: (ip: string) => (
-        <code style={{
-          background: 'linear-gradient(135deg, #f5f7fa 0%, #f0f2f5 100%)',
-          padding: '4px 10px',
-          borderRadius: 6,
-          fontSize: 13,
-          fontFamily: "'SF Mono', Monaco, monospace",
-          color: '#5c5c6d'
-        }}>
-          {ip}
-        </code>
-      ),
+      render: (ip: string) => <code>{ip}</code>,
     },
     {
       title: '端口',
@@ -226,9 +215,9 @@ const HostList: React.FC = () => {
       width: 120,
       render: (group: HostGroup) => group?.name ? (
         <Tag style={{
-          background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
-          borderColor: 'rgba(102, 126, 234, 0.3)',
-          color: '#667eea',
+          background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.12) 0%, rgba(20, 184, 166, 0.12) 100%)',
+          borderColor: 'rgba(14, 165, 233, 0.35)',
+          color: '#0284c7',
           borderRadius: 6,
           padding: '2px 10px',
         }}>
@@ -255,7 +244,7 @@ const HostList: React.FC = () => {
               size="small"
               icon={<ApiOutlined />}
               onClick={() => handleTestConnection(record.id)}
-              style={{ color: '#667eea' }}
+              style={{ color: '#0ea5e9' }}
             />
           </Tooltip>
           <Tooltip title="编辑">
@@ -288,92 +277,56 @@ const HostList: React.FC = () => {
   ]
 
   return (
-    <div className="fade-in">
-      <div className="page-header">
-        <div className="page-header-left">
-          <h2>主机管理</h2>
-          <p>管理和监控所有服务器资源</p>
+    <div className="page-shell fade-in">
+      <div className="page-hero">
+        <div>
+          <div className="page-hero-title">主机管理</div>
+          <p className="page-hero-subtitle">管理和监控所有服务器资源</p>
+        </div>
+        <div className="page-hero-actions">
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+            添加主机
+          </Button>
+          <Button icon={<ReloadOutlined />} onClick={fetchHosts}>
+            刷新
+          </Button>
         </div>
       </div>
 
-      <Row gutter={[20, 20]} style={{ marginBottom: 24 }}>
-        <Col xs={24} sm={8}>
-          <Card
-            bordered={false}
-            style={{
-              borderRadius: 16,
-              background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%)',
-              border: '1px solid rgba(102, 126, 234, 0.1)',
-            }}
-          >
-            <Statistic
-              title={<span style={{ color: '#8c8c8c' }}>主机总数</span>}
-              value={total}
-              prefix={<DesktopOutlined style={{ color: '#667eea', marginRight: 8 }} />}
-              valueStyle={{ color: '#1a1a2e', fontWeight: 700 }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={8}>
-          <Card
-            bordered={false}
-            style={{
-              borderRadius: 16,
-              background: 'linear-gradient(135deg, rgba(17, 153, 142, 0.05) 0%, rgba(56, 239, 125, 0.05) 100%)',
-              border: '1px solid rgba(17, 153, 142, 0.1)',
-            }}
-          >
-            <Statistic
-              title={<span style={{ color: '#8c8c8c' }}>在线</span>}
-              value={onlineCount}
-              prefix={<CheckCircleOutlined style={{ color: '#11998e', marginRight: 8 }} />}
-              valueStyle={{ color: '#11998e', fontWeight: 700 }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={8}>
-          <Card
-            bordered={false}
-            style={{
-              borderRadius: 16,
-              background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, rgba(248, 113, 113, 0.05) 100%)',
-              border: '1px solid rgba(239, 68, 68, 0.1)',
-            }}
-          >
-            <Statistic
-              title={<span style={{ color: '#8c8c8c' }}>离线</span>}
-              value={offlineCount}
-              prefix={<CloseCircleOutlined style={{ color: '#ef4444', marginRight: 8 }} />}
-              valueStyle={{ color: '#ef4444', fontWeight: 700 }}
-            />
-          </Card>
-        </Col>
-      </Row>
+      <div className="metric-grid">
+        <Card bordered={false} className="metric-card metric-card--primary">
+          <Statistic
+            title="主机总数"
+            value={total}
+            prefix={<DesktopOutlined style={{ color: '#0ea5e9', marginRight: 8 }} />}
+          />
+        </Card>
+        <Card bordered={false} className="metric-card metric-card--success">
+          <Statistic
+            title="在线"
+            value={onlineCount}
+            prefix={<CheckCircleOutlined style={{ color: '#22c55e', marginRight: 8 }} />}
+          />
+        </Card>
+        <Card bordered={false} className="metric-card metric-card--danger">
+          <Statistic
+            title="离线"
+            value={offlineCount}
+            prefix={<CloseCircleOutlined style={{ color: '#ef4444', marginRight: 8 }} />}
+          />
+        </Card>
+      </div>
 
       <Card className="section-card" bordered={false}>
-        <div style={{ padding: '0 0 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Space>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={handleAdd}
-              style={{ borderRadius: 8 }}
-            >
-              添加主机
-            </Button>
+        <div className="toolbar">
+          <div className="toolbar-left">
             <Input
               placeholder="搜索主机..."
-              prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
-              style={{ width: 220, borderRadius: 8 }}
+              prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+              style={{ width: 240 }}
             />
-          </Space>
-          <Button
-            icon={<ReloadOutlined />}
-            onClick={fetchHosts}
-            style={{ borderRadius: 8 }}
-          >
-            刷新
-          </Button>
+          </div>
+          <div className="toolbar-right" />
         </div>
 
         <Table

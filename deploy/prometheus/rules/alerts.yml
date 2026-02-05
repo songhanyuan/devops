@@ -1,0 +1,11 @@
+groups:
+  - name: devops.rules
+    rules:
+      - alert: TargetDown
+        expr: up{job!="devops-backend"} == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Target down"
+          description: "{{ $labels.job }} target {{ $labels.instance }} has been down for more than 2 minutes."

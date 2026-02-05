@@ -68,7 +68,8 @@ func main() {
 	envService := service.NewEnvService(envRepo)
 	configService := service.NewConfigService(configRepo, configHistoryRepo, cfg.JWT.Secret)
 	clusterRepo := repository.NewClusterRepository(db)
-	k8sService := service.NewK8sService(clusterRepo, cfg.JWT.Secret)
+	k8sHistoryRepo := repository.NewK8sYAMLHistoryRepository(db)
+	k8sService := service.NewK8sService(clusterRepo, k8sHistoryRepo, cfg.JWT.Secret)
 
 	// Initialize admin user
 	if err := authService.InitAdminUser(); err != nil {

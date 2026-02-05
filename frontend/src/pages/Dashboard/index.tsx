@@ -20,13 +20,23 @@ const { Text } = Typography
 const Dashboard: React.FC = () => {
   const navigate = useNavigate()
 
+  const palette = {
+    primary: '#0ea5e9',
+    accent: '#14b8a6',
+    success: '#22c55e',
+    warn: '#f59e0b',
+    danger: '#ef4444',
+    ink: '#0f172a',
+    muted: '#64748b',
+  }
+
   const cpuOption = {
     tooltip: {
       trigger: 'axis',
       backgroundColor: 'rgba(255, 255, 255, 0.96)',
       borderColor: '#eee',
       borderWidth: 1,
-      textStyle: { color: '#1a1a2e' },
+      textStyle: { color: palette.ink },
       boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
     },
     grid: { top: 20, right: 20, bottom: 30, left: 50 },
@@ -34,7 +44,7 @@ const Dashboard: React.FC = () => {
       type: 'category',
       data: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '24:00'],
       axisLine: { lineStyle: { color: '#eef0f3' } },
-      axisLabel: { color: '#8c8c8c', fontSize: 11 },
+      axisLabel: { color: palette.muted, fontSize: 11 },
       axisTick: { show: false },
     },
     yAxis: {
@@ -42,7 +52,7 @@ const Dashboard: React.FC = () => {
       max: 100,
       axisLine: { show: false },
       splitLine: { lineStyle: { color: '#f5f5f7', type: 'dashed' } },
-      axisLabel: { color: '#8c8c8c', fontSize: 11, formatter: '{value}%' },
+      axisLabel: { color: palette.muted, fontSize: 11, formatter: '{value}%' },
     },
     series: [
       {
@@ -52,15 +62,15 @@ const Dashboard: React.FC = () => {
         symbol: 'circle',
         symbolSize: 6,
         showSymbol: false,
-        lineStyle: { width: 3, color: '#667eea' },
-        itemStyle: { color: '#667eea', borderWidth: 2, borderColor: '#fff' },
+        lineStyle: { width: 3, color: palette.primary },
+        itemStyle: { color: palette.primary, borderWidth: 2, borderColor: '#fff' },
         areaStyle: {
           color: {
             type: 'linear',
             x: 0, y: 0, x2: 0, y2: 1,
             colorStops: [
-              { offset: 0, color: 'rgba(102, 126, 234, 0.25)' },
-              { offset: 1, color: 'rgba(102, 126, 234, 0.02)' },
+              { offset: 0, color: 'rgba(14, 165, 233, 0.25)' },
+              { offset: 1, color: 'rgba(14, 165, 233, 0.02)' },
             ],
           },
         },
@@ -74,14 +84,14 @@ const Dashboard: React.FC = () => {
       backgroundColor: 'rgba(255, 255, 255, 0.96)',
       borderColor: '#eee',
       borderWidth: 1,
-      textStyle: { color: '#1a1a2e' },
+      textStyle: { color: palette.ink },
     },
     grid: { top: 20, right: 20, bottom: 30, left: 50 },
     xAxis: {
       type: 'category',
       data: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '24:00'],
       axisLine: { lineStyle: { color: '#eef0f3' } },
-      axisLabel: { color: '#8c8c8c', fontSize: 11 },
+      axisLabel: { color: palette.muted, fontSize: 11 },
       axisTick: { show: false },
     },
     yAxis: {
@@ -89,7 +99,7 @@ const Dashboard: React.FC = () => {
       max: 100,
       axisLine: { show: false },
       splitLine: { lineStyle: { color: '#f5f5f7', type: 'dashed' } },
-      axisLabel: { color: '#8c8c8c', fontSize: 11, formatter: '{value}%' },
+      axisLabel: { color: palette.muted, fontSize: 11, formatter: '{value}%' },
     },
     series: [
       {
@@ -99,15 +109,15 @@ const Dashboard: React.FC = () => {
         symbol: 'circle',
         symbolSize: 6,
         showSymbol: false,
-        lineStyle: { width: 3, color: '#11998e' },
-        itemStyle: { color: '#11998e', borderWidth: 2, borderColor: '#fff' },
+        lineStyle: { width: 3, color: palette.accent },
+        itemStyle: { color: palette.accent, borderWidth: 2, borderColor: '#fff' },
         areaStyle: {
           color: {
             type: 'linear',
             x: 0, y: 0, x2: 0, y2: 1,
             colorStops: [
-              { offset: 0, color: 'rgba(17, 153, 142, 0.25)' },
-              { offset: 1, color: 'rgba(17, 153, 142, 0.02)' },
+              { offset: 0, color: 'rgba(20, 184, 166, 0.25)' },
+              { offset: 1, color: 'rgba(20, 184, 166, 0.02)' },
             ],
           },
         },
@@ -121,21 +131,21 @@ const Dashboard: React.FC = () => {
       backgroundColor: 'rgba(255, 255, 255, 0.96)',
       borderColor: '#eee',
       borderWidth: 1,
-      textStyle: { color: '#1a1a2e' },
+      textStyle: { color: palette.ink },
     },
     grid: { top: 20, right: 20, bottom: 30, left: 50 },
     xAxis: {
       type: 'category',
       data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
       axisLine: { lineStyle: { color: '#eef0f3' } },
-      axisLabel: { color: '#8c8c8c', fontSize: 11 },
+      axisLabel: { color: palette.muted, fontSize: 11 },
       axisTick: { show: false },
     },
     yAxis: {
       type: 'value',
       axisLine: { show: false },
       splitLine: { lineStyle: { color: '#f5f5f7', type: 'dashed' } },
-      axisLabel: { color: '#8c8c8c', fontSize: 11 },
+      axisLabel: { color: palette.muted, fontSize: 11 },
     },
     series: [
       {
@@ -148,8 +158,8 @@ const Dashboard: React.FC = () => {
             type: 'linear',
             x: 0, y: 0, x2: 0, y2: 1,
             colorStops: [
-              { offset: 0, color: '#a78bfa' },
-              { offset: 1, color: '#667eea' },
+              { offset: 0, color: '#38bdf8' },
+              { offset: 1, color: '#0ea5e9' },
             ],
           },
         },
@@ -158,12 +168,12 @@ const Dashboard: React.FC = () => {
   }
 
   const activities = [
-    { color: '#667eea', title: 'admin 部署了 payment-service 到生产环境', time: '5 分钟前' },
-    { color: '#11998e', title: 'web-gateway 健康检查恢复正常', time: '15 分钟前' },
-    { color: '#f59e0b', title: 'db-server-03 CPU 使用率超过 80%', time: '30 分钟前' },
-    { color: '#667eea', title: 'admin 更新了 redis 配置项', time: '1 小时前' },
-    { color: '#11998e', title: 'K8s 集群 prod-cluster 连接测试通过', time: '2 小时前' },
-    { color: '#ef4444', title: 'api-server-02 SSH 连接失败', time: '3 小时前' },
+    { color: palette.primary, title: 'admin 部署了 payment-service 到生产环境', time: '5 分钟前' },
+    { color: palette.accent, title: 'web-gateway 健康检查恢复正常', time: '15 分钟前' },
+    { color: palette.warn, title: 'db-server-03 CPU 使用率超过 80%', time: '30 分钟前' },
+    { color: palette.primary, title: 'admin 更新了 redis 配置项', time: '1 小时前' },
+    { color: palette.accent, title: 'K8s 集群 prod-cluster 连接测试通过', time: '2 小时前' },
+    { color: palette.danger, title: 'api-server-02 SSH 连接失败', time: '3 小时前' },
   ]
 
   const quickActions = [
@@ -174,15 +184,12 @@ const Dashboard: React.FC = () => {
   ]
 
   return (
-    <div className="fade-in">
-      {/* Welcome Section */}
-      <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1a1a2e', marginBottom: 8, letterSpacing: -0.5 }}>
-          仪表盘
-        </h1>
-        <p style={{ fontSize: 15, color: '#8c8c8c', margin: 0 }}>
-          欢迎回来，这是您的运维概览
-        </p>
+    <div className="page-shell fade-in">
+      <div className="page-hero">
+        <div>
+          <div className="page-hero-title">仪表盘</div>
+          <p className="page-hero-subtitle">欢迎回来，这是您的运维概览</p>
+        </div>
       </div>
 
       {/* Stat cards */}
@@ -271,53 +278,53 @@ const Dashboard: React.FC = () => {
             <div style={{ padding: '4px 0' }}>
               <div style={{ marginBottom: 24 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <Text style={{ color: '#5c5c6d' }}>CPU 平均</Text>
-                  <Text strong style={{ color: '#667eea' }}>42%</Text>
+                  <Text style={{ color: palette.muted }}>CPU 平均</Text>
+                  <Text strong style={{ color: palette.primary }}>42%</Text>
                 </div>
                 <Progress
                   percent={42}
                   showInfo={false}
-                  strokeColor={{ from: '#667eea', to: '#764ba2' }}
-                  trailColor="#f0f0f5"
+                  strokeColor={{ from: palette.primary, to: '#1d4ed8' }}
+                  trailColor="#e2e8f0"
                   size="small"
                 />
               </div>
               <div style={{ marginBottom: 24 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <Text style={{ color: '#5c5c6d' }}>内存平均</Text>
-                  <Text strong style={{ color: '#11998e' }}>71%</Text>
+                  <Text style={{ color: palette.muted }}>内存平均</Text>
+                  <Text strong style={{ color: palette.accent }}>71%</Text>
                 </div>
                 <Progress
                   percent={71}
                   showInfo={false}
-                  strokeColor={{ from: '#11998e', to: '#38ef7d' }}
-                  trailColor="#f0f0f5"
+                  strokeColor={{ from: palette.accent, to: '#22c55e' }}
+                  trailColor="#e2e8f0"
                   size="small"
                 />
               </div>
               <div style={{ marginBottom: 24 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <Text style={{ color: '#5c5c6d' }}>磁盘平均</Text>
-                  <Text strong style={{ color: '#f59e0b' }}>58%</Text>
+                  <Text style={{ color: palette.muted }}>磁盘平均</Text>
+                  <Text strong style={{ color: palette.warn }}>58%</Text>
                 </div>
                 <Progress
                   percent={58}
                   showInfo={false}
-                  strokeColor={{ from: '#f59e0b', to: '#fbbf24' }}
-                  trailColor="#f0f0f5"
+                  strokeColor={{ from: palette.warn, to: '#f97316' }}
+                  trailColor="#e2e8f0"
                   size="small"
                 />
               </div>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <Text style={{ color: '#5c5c6d' }}>网络带宽</Text>
-                  <Text strong style={{ color: '#8b5cf6' }}>23%</Text>
+                  <Text style={{ color: palette.muted }}>网络带宽</Text>
+                  <Text strong style={{ color: palette.primary }}>23%</Text>
                 </div>
                 <Progress
                   percent={23}
                   showInfo={false}
-                  strokeColor={{ from: '#8b5cf6', to: '#a78bfa' }}
-                  trailColor="#f0f0f5"
+                  strokeColor={{ from: '#38bdf8', to: palette.primary }}
+                  trailColor="#e2e8f0"
                   size="small"
                 />
               </div>
@@ -354,16 +361,16 @@ const Dashboard: React.FC = () => {
                     width: 48,
                     height: 48,
                     borderRadius: 12,
-                    background: 'linear-gradient(135deg, rgba(17, 153, 142, 0.1) 0%, rgba(56, 239, 125, 0.1) 100%)',
+                    background: 'linear-gradient(135deg, rgba(20, 184, 166, 0.12) 0%, rgba(34, 197, 94, 0.12) 100%)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center'
                   }}>
-                    <SafetyCertificateOutlined style={{ fontSize: 24, color: '#11998e' }} />
+                    <SafetyCertificateOutlined style={{ fontSize: 24, color: palette.accent }} />
                   </div>
                   <div>
-                    <Text style={{ fontSize: 13, color: '#8c8c8c' }}>系统状态</Text>
-                    <div style={{ fontSize: 16, fontWeight: 600, color: '#11998e' }}>运行正常</div>
+                    <Text style={{ fontSize: 13, color: palette.muted }}>系统状态</Text>
+                    <div style={{ fontSize: 16, fontWeight: 600, color: palette.accent }}>运行正常</div>
                   </div>
                 </div>
               </Col>
@@ -373,16 +380,16 @@ const Dashboard: React.FC = () => {
                     width: 48,
                     height: 48,
                     borderRadius: 12,
-                    background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
+                    background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.12) 0%, rgba(56, 189, 248, 0.12) 100%)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center'
                   }}>
-                    <ThunderboltOutlined style={{ fontSize: 24, color: '#667eea' }} />
+                    <ThunderboltOutlined style={{ fontSize: 24, color: palette.primary }} />
                   </div>
                   <div>
-                    <Text style={{ fontSize: 13, color: '#8c8c8c' }}>今日部署</Text>
-                    <div style={{ fontSize: 16, fontWeight: 600, color: '#1a1a2e' }}>6 次</div>
+                    <Text style={{ fontSize: 13, color: palette.muted }}>今日部署</Text>
+                    <div style={{ fontSize: 16, fontWeight: 600, color: palette.ink }}>6 次</div>
                   </div>
                 </div>
               </Col>
@@ -392,16 +399,16 @@ const Dashboard: React.FC = () => {
                     width: 48,
                     height: 48,
                     borderRadius: 12,
-                    background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(251, 191, 36, 0.1) 100%)',
+                    background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(249, 115, 22, 0.12) 100%)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center'
                   }}>
-                    <WarningOutlined style={{ fontSize: 24, color: '#f59e0b' }} />
+                    <WarningOutlined style={{ fontSize: 24, color: palette.warn }} />
                   </div>
                   <div>
-                    <Text style={{ fontSize: 13, color: '#8c8c8c' }}>待处理告警</Text>
-                    <div style={{ fontSize: 16, fontWeight: 600, color: '#f59e0b' }}>2 条</div>
+                    <Text style={{ fontSize: 13, color: palette.muted }}>待处理告警</Text>
+                    <div style={{ fontSize: 16, fontWeight: 600, color: palette.warn }}>2 条</div>
                   </div>
                 </div>
               </Col>
@@ -411,16 +418,16 @@ const Dashboard: React.FC = () => {
                     width: 48,
                     height: 48,
                     borderRadius: 12,
-                    background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(167, 139, 250, 0.1) 100%)',
+                    background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.12) 0%, rgba(20, 184, 166, 0.12) 100%)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center'
                   }}>
-                    <ClusterOutlined style={{ fontSize: 24, color: '#8b5cf6' }} />
+                    <ClusterOutlined style={{ fontSize: 24, color: palette.primary }} />
                   </div>
                   <div>
-                    <Text style={{ fontSize: 13, color: '#8c8c8c' }}>K8s 集群</Text>
-                    <div style={{ fontSize: 16, fontWeight: 600, color: '#1a1a2e' }}>3 个</div>
+                    <Text style={{ fontSize: 13, color: palette.muted }}>K8s 集群</Text>
+                    <div style={{ fontSize: 16, fontWeight: 600, color: palette.ink }}>3 个</div>
                   </div>
                 </div>
               </Col>

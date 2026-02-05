@@ -6,15 +6,12 @@ import {
   Tag,
   Button,
   Table,
-  Space,
   Modal,
   Form,
   Input,
   message,
   Typography,
   Badge,
-  Row,
-  Col,
   Statistic,
 } from 'antd'
 import {
@@ -110,7 +107,7 @@ const AppDetail: React.FC = () => {
       dataIndex: 'branch',
       key: 'branch',
       width: 120,
-      render: (v: string) => <code style={{ fontSize: 12, background: '#f5f5f5', padding: '1px 6px', borderRadius: 4 }}>{v || '-'}</code>,
+      render: (v: string) => <code>{v || '-'}</code>,
     },
     {
       title: '状态',
@@ -152,52 +149,46 @@ const AppDetail: React.FC = () => {
   ]
 
   return (
-    <div>
-      <div className="page-header">
-        <div className="page-header-left">
-          <Space>
-            <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/deploy/apps')} type="text" />
-            <div>
-              <h2>{app?.name || '应用详情'}</h2>
-              <p>{app?.description || '查看应用信息和部署历史'}</p>
-            </div>
-          </Space>
+    <div className="page-shell fade-in">
+      <div className="page-hero">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/deploy/apps')} type="text" />
+          <div>
+            <div className="page-hero-title">{app?.name || '应用详情'}</div>
+            <p className="page-hero-subtitle">{app?.description || '查看应用信息和部署历史'}</p>
+          </div>
         </div>
-        <Button
-          type="primary"
-          icon={<RocketOutlined />}
-          onClick={() => {
-            deployForm.resetFields()
-            deployForm.setFieldsValue({ branch: app?.branch })
-            setDeployModalVisible(true)
-          }}
-        >
-          发起部署
-        </Button>
+        <div className="page-hero-actions">
+          <Button
+            type="primary"
+            icon={<RocketOutlined />}
+            onClick={() => {
+              deployForm.resetFields()
+              deployForm.setFieldsValue({ branch: app?.branch })
+              setDeployModalVisible(true)
+            }}
+          >
+            发起部署
+          </Button>
+        </div>
       </div>
 
-      <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
-        <Col xs={8}>
-          <Card className="stat-card" bordered={false} style={{ background: '#f0f5ff' }}>
-            <Statistic title="总部署次数" value={deployments.length} prefix={<RocketOutlined style={{ color: '#4f46e5' }} />} />
-          </Card>
-        </Col>
-        <Col xs={8}>
-          <Card className="stat-card" bordered={false} style={{ background: '#f6ffed' }}>
-            <Statistic title="成功" value={successCount} prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />} />
-          </Card>
-        </Col>
-        <Col xs={8}>
-          <Card className="stat-card" bordered={false} style={{ background: '#fff2f0' }}>
-            <Statistic title="失败" value={failedCount} prefix={<CloseCircleOutlined style={{ color: '#ff4d4f' }} />} />
-          </Card>
-        </Col>
-      </Row>
+      <div className="metric-grid">
+        <Card className="metric-card metric-card--primary" bordered={false}>
+          <Statistic title="总部署次数" value={deployments.length} prefix={<RocketOutlined style={{ color: '#0ea5e9' }} />} />
+        </Card>
+        <Card className="metric-card metric-card--success" bordered={false}>
+          <Statistic title="成功" value={successCount} prefix={<CheckCircleOutlined style={{ color: '#22c55e' }} />} />
+        </Card>
+        <Card className="metric-card metric-card--danger" bordered={false}>
+          <Statistic title="失败" value={failedCount} prefix={<CloseCircleOutlined style={{ color: '#ef4444' }} />} />
+        </Card>
+      </div>
 
       <Card className="section-card" bordered={false} style={{ marginBottom: 20 }}>
         <Descriptions column={3} labelStyle={{ fontWeight: 500 }}>
           <Descriptions.Item label="应用代码">
-            <code style={{ background: '#f5f5f5', padding: '2px 8px', borderRadius: 4 }}>{app?.code}</code>
+            <code>{app?.code}</code>
           </Descriptions.Item>
           <Descriptions.Item label="应用类型">{app?.type}</Descriptions.Item>
           <Descriptions.Item label="开发语言">{app?.language || '-'}</Descriptions.Item>

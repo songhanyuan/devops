@@ -42,6 +42,7 @@ func InitDatabase(cfg *config.DatabaseConfig) (*gorm.DB, error) {
 		&model.ConfigItem{},
 		&model.ConfigHistory{},
 		&model.Cluster{},
+		&model.K8sYAMLHistory{},
 	); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}

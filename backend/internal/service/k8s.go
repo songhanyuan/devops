@@ -6,6 +6,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -18,9 +19,20 @@ import (
 	"github.com/google/uuid"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
+	yamlutil "k8s.io/apimachinery/pkg/util/yaml"
+	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/discovery/cached/memory"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/clientcmd"
+	"sigs.k8s.io/yaml"
 )
 
 var (
@@ -31,10 +43,12 @@ var (
 
 type K8sService struct {
 	clusterRepo *repository.ClusterRepository
+	historyRepo *repository.K8sYAMLHistoryRepository
 	encryptKey  []byte
+	historyLimit int
 }
 
-func NewK8sService(clusterRepo *repository.ClusterRepository, encryptKey string) *K8sService {
+func NewK8sService(clusterRepo *repository.ClusterRepository, historyRepo *repository.K8sYAMLHistoryRepository, encryptKey string) *K8sService {
 	key := []byte(encryptKey)
 	if len(key) < 32 {
 		padded := make([]byte, 32)
@@ -42,8 +56,10 @@ func NewK8sService(clusterRepo *repository.ClusterRepository, encryptKey string)
 		key = padded
 	}
 	return &K8sService{
-		clusterRepo: clusterRepo,
-		encryptKey:  key[:32],
+		clusterRepo:  clusterRepo,
+		historyRepo:  historyRepo,
+		encryptKey:   key[:32],
+		historyLimit: 20,
 	}
 }
 
@@ -115,6 +131,38 @@ type UpdateClusterRequest struct {
 	KubeConfig  string `json:"kubeconfig"`
 	EnvCode     string `json:"env_code"`
 	Description string `json:"description"`
+}
+
+type ApplyYAMLRequest struct {
+	YAML      string `json:"yaml" binding:"required"`
+	Namespace string `json:"namespace"`
+	DryRun    bool   `json:"dry_run"`
+	Action    string `json:"action"`
+}
+
+type ApplyYAMLResult struct {
+	Kind      string `json:"kind"`
+	Name      string `json:"name"`
+	Namespace string `json:"namespace,omitempty"`
+	Action    string `json:"action"`
+}
+
+type FormatYAMLRequest struct {
+	YAML string `json:"yaml" binding:"required"`
+}
+
+var kindAPIVersionMap = map[string]string{
+	"Deployment":  "apps/v1",
+	"StatefulSet": "apps/v1",
+	"DaemonSet":   "apps/v1",
+	"CronJob":     "batch/v1",
+	"Service":     "v1",
+	"Ingress":     "networking.k8s.io/v1",
+	"ConfigMap":   "v1",
+	"Secret":      "v1",
+	"Pod":         "v1",
+	"Namespace":   "v1",
+	"Node":        "v1",
 }
 
 func (s *K8sService) UpdateCluster(id uuid.UUID, req *UpdateClusterRequest) (*model.Cluster, error) {
@@ -399,15 +447,268 @@ func (s *K8sService) GetServices(id uuid.UUID, namespace string) ([]model.K8sRes
 	return resources, nil
 }
 
+func (s *K8sService) ApplyYAML(id uuid.UUID, yamlText, defaultNamespace string, dryRun bool, action string, createdBy uuid.UUID, username string) ([]ApplyYAMLResult, error) {
+	if action == "" {
+		action = "apply"
+	}
+	cfg, err := s.getRestConfigByClusterID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	dynClient, err := dynamic.NewForConfig(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("create dynamic client: %w", err)
+	}
+
+	discoveryClient, err := discovery.NewDiscoveryClientForConfig(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("create discovery client: %w", err)
+	}
+
+	mapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(discoveryClient))
+	decoder := yamlutil.NewYAMLOrJSONDecoder(strings.NewReader(yamlText), 4096)
+	ctx := context.Background()
+
+	var results []ApplyYAMLResult
+
+	for {
+		var raw map[string]interface{}
+		if err := decoder.Decode(&raw); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, fmt.Errorf("decode yaml: %w", err)
+		}
+		if len(raw) == 0 {
+			continue
+		}
+
+		obj := &unstructured.Unstructured{Object: raw}
+		objects, err := expandUnstructuredObjects(obj)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, item := range objects {
+			gvk := item.GroupVersionKind()
+			if gvk.Empty() {
+				return nil, errors.New("yaml 缺少 apiVersion 或 kind")
+			}
+			if item.GetName() == "" {
+				return nil, fmt.Errorf("%s 缺少 metadata.name", gvk.Kind)
+			}
+
+			mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+			if err != nil {
+				return nil, fmt.Errorf("map resource %s: %w", gvk.String(), err)
+			}
+
+			resource := dynClient.Resource(mapping.Resource)
+			var ri dynamic.ResourceInterface
+			if mapping.Scope.Name() == meta.RESTScopeNameNamespace {
+				ns := item.GetNamespace()
+				if ns == "" {
+					ns = defaultNamespace
+				}
+				if ns == "" {
+					return nil, fmt.Errorf("%s/%s 缺少 namespace", gvk.Kind, item.GetName())
+				}
+				item.SetNamespace(ns)
+				ri = resource.Namespace(ns)
+			} else {
+				item.SetNamespace("")
+				ri = resource
+			}
+
+			sanitizeUnstructured(item)
+
+			payload, err := json.Marshal(item)
+			if err != nil {
+				return nil, fmt.Errorf("encode %s/%s: %w", gvk.Kind, item.GetName(), err)
+			}
+
+			force := true
+			patchOptions := metav1.PatchOptions{
+				FieldManager: "devops-ui",
+				Force:        &force,
+			}
+			if dryRun {
+				patchOptions.DryRun = []string{metav1.DryRunAll}
+			}
+			if _, err := ri.Patch(ctx, item.GetName(), types.ApplyPatchType, payload, patchOptions); err != nil {
+				return nil, fmt.Errorf("apply %s/%s: %w", gvk.Kind, item.GetName(), err)
+			}
+
+			if !dryRun && s.historyRepo != nil {
+				yamlBytes, err := yaml.Marshal(item.Object)
+				if err != nil {
+					return nil, fmt.Errorf("encode yaml history: %w", err)
+				}
+				history := &model.K8sYAMLHistory{
+					ClusterID: id,
+					Kind:      gvk.Kind,
+					Namespace: item.GetNamespace(),
+					Name:      item.GetName(),
+					YAML:      strings.TrimSpace(string(yamlBytes)),
+					Action:    action,
+					CreatedBy: createdBy,
+					Username:  username,
+					CreatedAt: time.Now(),
+				}
+				_ = s.historyRepo.Create(history)
+				_ = s.historyRepo.TrimHistory(id, gvk.Kind, item.GetNamespace(), item.GetName(), s.historyLimit)
+			}
+
+			action := "applied"
+			if dryRun {
+				action = "validated"
+			}
+			results = append(results, ApplyYAMLResult{
+				Kind:      gvk.Kind,
+				Name:      item.GetName(),
+				Namespace: item.GetNamespace(),
+				Action:    action,
+			})
+		}
+	}
+
+	if len(results) == 0 {
+		return nil, errors.New("yaml 为空")
+	}
+
+	return results, nil
+}
+
+func (s *K8sService) FormatYAML(yamlText string) (string, error) {
+	decoder := yamlutil.NewYAMLOrJSONDecoder(strings.NewReader(yamlText), 4096)
+	var docs []string
+
+	for {
+		var raw map[string]interface{}
+		if err := decoder.Decode(&raw); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return "", fmt.Errorf("decode yaml: %w", err)
+		}
+		if len(raw) == 0 {
+			continue
+		}
+
+		obj := &unstructured.Unstructured{Object: raw}
+		objects, err := expandUnstructuredObjects(obj)
+		if err != nil {
+			return "", err
+		}
+
+		for _, item := range objects {
+			gvk := item.GroupVersionKind()
+			if gvk.Empty() {
+				return "", errors.New("yaml 缺少 apiVersion 或 kind")
+			}
+			if item.GetName() == "" {
+				return "", fmt.Errorf("%s 缺少 metadata.name", gvk.Kind)
+			}
+
+			sanitizeUnstructured(item)
+			data, err := yaml.Marshal(item.Object)
+			if err != nil {
+				return "", fmt.Errorf("encode yaml: %w", err)
+			}
+			docs = append(docs, strings.TrimSpace(string(data)))
+		}
+	}
+
+	if len(docs) == 0 {
+		return "", errors.New("yaml 为空")
+	}
+
+	return strings.Join(docs, "\n---\n"), nil
+}
+
+func (s *K8sService) ListYAMLHistory(id uuid.UUID, kind, namespace, name string, limit int) ([]model.K8sYAMLHistory, error) {
+	if kind == "" || name == "" {
+		return nil, errors.New("kind 与 name 必填")
+	}
+	if s.historyRepo == nil {
+		return []model.K8sYAMLHistory{}, nil
+	}
+	if limit <= 0 {
+		limit = s.historyLimit
+	}
+	if limit > 50 {
+		limit = 50
+	}
+	return s.historyRepo.ListByResource(id, kind, namespace, name, limit)
+}
+
+func (s *K8sService) GetResourceYAML(id uuid.UUID, kind, name, namespace string) (string, error) {
+	if kind == "" || name == "" {
+		return "", errors.New("kind 与 name 必填")
+	}
+
+	cfg, err := s.getRestConfigByClusterID(id)
+	if err != nil {
+		return "", err
+	}
+
+	dynClient, err := dynamic.NewForConfig(cfg)
+	if err != nil {
+		return "", fmt.Errorf("create dynamic client: %w", err)
+	}
+
+	discoveryClient, err := discovery.NewDiscoveryClientForConfig(cfg)
+	if err != nil {
+		return "", fmt.Errorf("create discovery client: %w", err)
+	}
+
+	mapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(discoveryClient))
+
+	gvk, err := resolveGVK(kind)
+	if err != nil {
+		return "", err
+	}
+
+	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+	if err != nil {
+		return "", fmt.Errorf("map resource %s: %w", gvk.String(), err)
+	}
+
+	resource := dynClient.Resource(mapping.Resource)
+	var ri dynamic.ResourceInterface
+	if mapping.Scope.Name() == meta.RESTScopeNameNamespace {
+		if namespace == "" {
+			return "", fmt.Errorf("%s/%s 缺少 namespace", kind, name)
+		}
+		ri = resource.Namespace(namespace)
+	} else {
+		namespace = ""
+		ri = resource
+	}
+
+	ctx := context.Background()
+	obj, err := ri.Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return "", fmt.Errorf("get %s/%s: %w", kind, name, err)
+	}
+
+	sanitizeUnstructured(obj)
+	data, err := yaml.Marshal(obj.Object)
+	if err != nil {
+		return "", fmt.Errorf("encode yaml: %w", err)
+	}
+
+	return string(data), nil
+}
+
 // --- 内部方法 ---
 
 func (s *K8sService) getClient(kubeconfig string) (*kubernetes.Clientset, error) {
-	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(kubeconfig))
+	config, err := s.getRestConfig(kubeconfig)
 	if err != nil {
-		return nil, fmt.Errorf("parse kubeconfig: %w", err)
+		return nil, err
 	}
-
-	config.Timeout = 10 * time.Second
 
 	client, err := kubernetes.NewForConfig(config)
 	if err != nil {
@@ -418,6 +719,31 @@ func (s *K8sService) getClient(kubeconfig string) (*kubernetes.Clientset, error)
 }
 
 func (s *K8sService) getClientByClusterID(id uuid.UUID) (*kubernetes.Clientset, error) {
+	config, err := s.getRestConfigByClusterID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("create client: %w", err)
+	}
+
+	return client, nil
+}
+
+func (s *K8sService) getRestConfig(kubeconfig string) (*rest.Config, error) {
+	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(kubeconfig))
+	if err != nil {
+		return nil, fmt.Errorf("parse kubeconfig: %w", err)
+	}
+
+	config.Timeout = 10 * time.Second
+
+	return config, nil
+}
+
+func (s *K8sService) getRestConfigByClusterID(id uuid.UUID) (*rest.Config, error) {
 	cluster, err := s.clusterRepo.GetByID(id)
 	if err != nil {
 		return nil, ErrClusterNotFound
@@ -428,7 +754,7 @@ func (s *K8sService) getClientByClusterID(id uuid.UUID) (*kubernetes.Clientset, 
 		return nil, fmt.Errorf("decrypt kubeconfig: %w", err)
 	}
 
-	return s.getClient(kubeconfig)
+	return s.getRestConfig(kubeconfig)
 }
 
 func (s *K8sService) getClusterOverview(client *kubernetes.Clientset) (*model.ClusterOverview, error) {
@@ -487,6 +813,37 @@ func (s *K8sService) getClusterOverview(client *kubernetes.Clientset) (*model.Cl
 	_ = appsv1.SchemeGroupVersion // keep import
 
 	return overview, nil
+}
+
+func resolveGVK(kind string) (schema.GroupVersionKind, error) {
+	apiVersion, ok := kindAPIVersionMap[kind]
+	if !ok {
+		return schema.GroupVersionKind{}, fmt.Errorf("不支持的 kind: %s", kind)
+	}
+	return schema.FromAPIVersionAndKind(apiVersion, kind), nil
+}
+
+func sanitizeUnstructured(obj *unstructured.Unstructured) {
+	unstructured.RemoveNestedField(obj.Object, "status")
+	unstructured.RemoveNestedField(obj.Object, "metadata", "creationTimestamp")
+	unstructured.RemoveNestedField(obj.Object, "metadata", "resourceVersion")
+	unstructured.RemoveNestedField(obj.Object, "metadata", "uid")
+	unstructured.RemoveNestedField(obj.Object, "metadata", "generation")
+	unstructured.RemoveNestedField(obj.Object, "metadata", "selfLink")
+	unstructured.RemoveNestedField(obj.Object, "metadata", "managedFields")
+}
+
+func expandUnstructuredObjects(obj *unstructured.Unstructured) ([]*unstructured.Unstructured, error) {
+	if obj.IsList() {
+		list := &unstructured.UnstructuredList{}
+		list.Object = obj.Object
+		items := make([]*unstructured.Unstructured, 0, len(list.Items))
+		for i := range list.Items {
+			items = append(items, list.Items[i].DeepCopy())
+		}
+		return items, nil
+	}
+	return []*unstructured.Unstructured{obj}, nil
 }
 
 // Encryption helpers

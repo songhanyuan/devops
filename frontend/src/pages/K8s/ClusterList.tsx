@@ -13,6 +13,7 @@ import {
   Popconfirm,
   Tooltip,
   Card,
+  Statistic,
 } from 'antd'
 import {
   PlusOutlined,
@@ -21,6 +22,7 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   ExclamationCircleOutlined,
+  ClusterOutlined,
 } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
@@ -123,11 +125,11 @@ const ClusterList: React.FC = () => {
   const statusIcon = (status: number) => {
     switch (status) {
       case 1:
-        return <CheckCircleOutlined style={{ color: '#52c41a' }} />
+        return <CheckCircleOutlined style={{ color: '#22c55e' }} />
       case 2:
-        return <CloseCircleOutlined style={{ color: '#f5222d' }} />
+        return <CloseCircleOutlined style={{ color: '#ef4444' }} />
       default:
-        return <ExclamationCircleOutlined style={{ color: '#faad14' }} />
+        return <ExclamationCircleOutlined style={{ color: '#f59e0b' }} />
     }
   }
 
@@ -141,6 +143,10 @@ const ClusterList: React.FC = () => {
         return '未知'
     }
   }
+
+  const totalCount = total || clusters.length
+  const normalCount = clusters.filter((c) => c.status === 1).length
+  const abnormalCount = clusters.filter((c) => c.status !== 1).length
 
   const columns: ColumnsType<Cluster> = [
     {
@@ -210,41 +216,52 @@ const ClusterList: React.FC = () => {
   ]
 
   return (
-    <div>
-      <div className="page-header">
-        <div className="page-header-left">
-          <h2>Kubernetes 集群管理</h2>
-          <p>管理 Kubernetes 集群，查看资源状态</p>
+    <div className="page-shell fade-in">
+      <div className="page-hero">
+        <div>
+          <div className="page-hero-title">Kubernetes 集群管理</div>
+          <p className="page-hero-subtitle">管理 Kubernetes 集群，查看资源状态</p>
+        </div>
+        <div className="page-hero-actions">
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+            添加集群
+          </Button>
+          <Button icon={<ReloadOutlined />} onClick={fetchClusters}>
+            刷新
+          </Button>
         </div>
       </div>
 
-      <Card className="section-card" bordered={false}>
-      <div style={{ padding: '0 0 16px', display: 'flex', justifyContent: 'space-between' }}>
-        <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-          添加集群
-        </Button>
-        <Button icon={<ReloadOutlined />} onClick={fetchClusters}>
-          刷新
-        </Button>
+      <div className="metric-grid">
+        <Card className="metric-card metric-card--primary" bordered={false}>
+          <Statistic title="集群总数" value={totalCount} prefix={<ClusterOutlined style={{ color: '#0ea5e9' }} />} />
+        </Card>
+        <Card className="metric-card metric-card--success" bordered={false}>
+          <Statistic title="正常" value={normalCount} prefix={<CheckCircleOutlined style={{ color: '#22c55e' }} />} />
+        </Card>
+        <Card className="metric-card metric-card--danger" bordered={false}>
+          <Statistic title="异常" value={abnormalCount} prefix={<CloseCircleOutlined style={{ color: '#ef4444' }} />} />
+        </Card>
       </div>
 
-      <Table
-        columns={columns}
-        dataSource={clusters}
-        rowKey="id"
-        loading={loading}
-        pagination={{
-          current: page,
-          pageSize,
-          total,
-          showSizeChanger: true,
-          showTotal: (t) => `共 ${t} 条`,
-          onChange: (p, ps) => {
-            setPage(p)
-            setPageSize(ps)
-          },
-        }}
-      />
+      <Card className="section-card" bordered={false}>
+        <Table
+          columns={columns}
+          dataSource={clusters}
+          rowKey="id"
+          loading={loading}
+          pagination={{
+            current: page,
+            pageSize,
+            total,
+            showSizeChanger: true,
+            showTotal: (t) => `共 ${t} 条`,
+            onChange: (p, ps) => {
+              setPage(p)
+              setPageSize(ps)
+            },
+          }}
+        />
       </Card>
 
       <Modal

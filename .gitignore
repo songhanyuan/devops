@@ -27,7 +27,6 @@ Thumbs.db
 *.exe
 *.test
 *.out
-go.sum
 
 # Docker volumes
 data/

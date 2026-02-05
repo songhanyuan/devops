@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   Card,
-  Row,
-  Col,
   Statistic,
   Table,
   Tag,
@@ -11,7 +9,6 @@ import {
   Select,
   Button,
   Descriptions,
-  Space,
   Spin,
   message,
 } from 'antd'
@@ -272,30 +269,22 @@ const ClusterDetail: React.FC = () => {
         <Spin spinning={loading}>
           {overview && (
             <>
-              <Row gutter={[16, 16]}>
-                <Col xs={24} sm={12} lg={6}>
-                  <Card>
-                    <Statistic title="节点" value={overview.ready_nodes} suffix={`/ ${overview.node_count}`} valueStyle={{ color: '#1890ff' }} />
-                  </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={6}>
-                  <Card>
-                    <Statistic title="Pod" value={overview.running_pods} suffix={`/ ${overview.pod_count}`} valueStyle={{ color: '#52c41a' }} />
-                  </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={6}>
-                  <Card>
-                    <Statistic title="Deployment" value={overview.deployment_count} valueStyle={{ color: '#722ed1' }} />
-                  </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={6}>
-                  <Card>
-                    <Statistic title="Service" value={overview.service_count} valueStyle={{ color: '#faad14' }} />
-                  </Card>
-                </Col>
-              </Row>
-              <Card style={{ marginTop: 16 }}>
-                <Descriptions title="集群信息" bordered column={2}>
+              <div className="metric-grid" style={{ marginBottom: 16 }}>
+                <Card className="metric-card metric-card--primary" bordered={false}>
+                  <Statistic title="节点" value={overview.ready_nodes} suffix={`/ ${overview.node_count}`} />
+                </Card>
+                <Card className="metric-card metric-card--success" bordered={false}>
+                  <Statistic title="Pod" value={overview.running_pods} suffix={`/ ${overview.pod_count}`} />
+                </Card>
+                <Card className="metric-card metric-card--primary" bordered={false}>
+                  <Statistic title="Deployment" value={overview.deployment_count} />
+                </Card>
+                <Card className="metric-card metric-card--warning" bordered={false}>
+                  <Statistic title="Service" value={overview.service_count} />
+                </Card>
+              </div>
+              <Card className="section-card" bordered={false}>
+                <Descriptions title="集群信息" bordered column={2} size="small">
                   <Descriptions.Item label="集群名称">{cluster?.name}</Descriptions.Item>
                   <Descriptions.Item label="集群代码">{cluster?.code}</Descriptions.Item>
                   <Descriptions.Item label="K8s 版本">{overview.version}</Descriptions.Item>
@@ -379,19 +368,26 @@ const ClusterDetail: React.FC = () => {
   ]
 
   return (
-    <div>
-      <Space style={{ marginBottom: 16 }}>
-        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/k8s/clusters')}>
-          返回
-        </Button>
-        <ClusterOutlined />
-        <span style={{ fontSize: 18, fontWeight: 600 }}>{cluster?.name || '集群详情'}</span>
-        <Button icon={<ReloadOutlined />} onClick={() => { fetchOverview(); fetchNamespaces() }}>
-          刷新
-        </Button>
-      </Space>
+    <div className="page-shell fade-in">
+      <div className="page-hero">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate('/k8s/clusters')} />
+          <ClusterOutlined style={{ color: '#0ea5e9', fontSize: 20 }} />
+          <div>
+            <div className="page-hero-title">{cluster?.name || '集群详情'}</div>
+            <p className="page-hero-subtitle">集群资源与命名空间视图</p>
+          </div>
+        </div>
+        <div className="page-hero-actions">
+          <Button icon={<ReloadOutlined />} onClick={() => { fetchOverview(); fetchNamespaces() }}>
+            刷新
+          </Button>
+        </div>
+      </div>
 
-      <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} />
+      <Card className="section-card" bordered={false}>
+        <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} />
+      </Card>
     </div>
   )
 }

@@ -15,7 +15,11 @@ import {
   Modal,
   Form,
   InputNumber,
+  Segmented,
+  Spin,
+  Tabs,
   Steps,
+  Typography,
   message,
   Popconfirm,
   Tooltip,
@@ -34,7 +38,9 @@ import {
 } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
-import { k8sService, Cluster, K8sResource, K8sNamespace } from '@/services/k8s'
+import { k8sService, Cluster, K8sResource, K8sNamespace, K8sYamlHistory } from '@/services/k8s'
+import YamlDiffViewer from '@/components/YamlDiffViewer'
+import YamlHistoryModal from '@/components/YamlHistoryModal'
 
 interface WorkloadListProps {
   kind: 'Deployment' | 'StatefulSet' | 'DaemonSet' | 'CronJob'
@@ -45,6 +51,134 @@ const kindConfig: Record<string, { title: string; desc: string; endpoint: string
   StatefulSet: { title: '有状态', desc: '管理有状态应用 StatefulSet 资源', endpoint: 'statefulsets' },
   DaemonSet: { title: '守护进程集', desc: '管理守护进程集 DaemonSet 资源', endpoint: 'daemonsets' },
   CronJob: { title: '任务', desc: '管理定时任务 CronJob 资源', endpoint: 'cronjobs' },
+}
+
+const workloadYamlTemplate = (
+  kind: WorkloadListProps['kind'],
+  namespace?: string,
+  variant: 'basic' | 'probes' | 'resources' = 'basic',
+) => {
+  const ns = namespace || 'default'
+  const probeBlock = `        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+`
+  const resourceBlock = `        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+`
+  const resourceBlockCron = `            resources:
+              requests:
+                cpu: "100m"
+                memory: "128Mi"
+              limits:
+                cpu: "500m"
+                memory: "512Mi"
+`
+  const extra = variant === 'probes' ? probeBlock : variant === 'resources' ? resourceBlock : ''
+
+  switch (kind) {
+    case 'StatefulSet':
+      return `apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: demo-stateful
+  namespace: ${ns}
+spec:
+  serviceName: demo-stateful
+  replicas: 2
+  selector:
+    matchLabels:
+      app: demo-stateful
+  template:
+    metadata:
+      labels:
+        app: demo-stateful
+    spec:
+      containers:
+      - name: app
+        image: nginx:1.25
+        ports:
+        - containerPort: 80
+${extra}`
+    case 'DaemonSet':
+      return `apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: demo-daemon
+  namespace: ${ns}
+spec:
+  selector:
+    matchLabels:
+      app: demo-daemon
+  template:
+    metadata:
+      labels:
+        app: demo-daemon
+    spec:
+      containers:
+      - name: agent
+        image: nginx:1.25
+        ports:
+        - containerPort: 80
+${extra}`
+    case 'CronJob':
+      return `apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: demo-cron
+  namespace: ${ns}
+spec:
+  schedule: "*/5 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: job
+            image: busybox:1.36
+            args:
+            - /bin/sh
+            - -c
+            - date; echo Hello from CronJob
+${variant === 'resources' ? resourceBlockCron : ''}`
+    default:
+      return `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-app
+  namespace: ${ns}
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: demo-app
+  template:
+    metadata:
+      labels:
+        app: demo-app
+    spec:
+      containers:
+      - name: app
+        image: nginx:1.25
+        ports:
+        - containerPort: 80
+${extra}`
+  }
 }
 
 const WorkloadList: React.FC<WorkloadListProps> = ({ kind }) => {
@@ -64,8 +198,26 @@ const WorkloadList: React.FC<WorkloadListProps> = ({ kind }) => {
   const [createVisible, setCreateVisible] = useState(false)
   const [currentStep, setCurrentStep] = useState(0)
   const [creating, setCreating] = useState(false)
+  const [createMode, setCreateMode] = useState<'form' | 'yaml'>('form')
+  const [yamlText, setYamlText] = useState('')
+  const [yamlNamespace, setYamlNamespace] = useState('')
+  const [yamlTemplate, setYamlTemplate] = useState<'basic' | 'probes' | 'resources'>('basic')
+  const [yamlActionLoading, setYamlActionLoading] = useState(false)
+  const [yamlVisible, setYamlVisible] = useState(false)
+  const [yamlLoading, setYamlLoading] = useState(false)
+  const [yamlEditorText, setYamlEditorText] = useState('')
+  const [yamlTarget, setYamlTarget] = useState<{ name: string; namespace: string } | null>(null)
+  const [yamlOriginal, setYamlOriginal] = useState('')
+  const [diffVisible, setDiffVisible] = useState(false)
+  const [historyVisible, setHistoryVisible] = useState(false)
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyItems, setHistoryItems] = useState<K8sYamlHistory[]>([])
   const [basicForm] = Form.useForm()
   const [containerForm] = Form.useForm()
+
+  const [detailTab, setDetailTab] = useState<'detail' | 'yaml'>('detail')
+  const [detailYaml, setDetailYaml] = useState('')
+  const [detailYamlLoading, setDetailYamlLoading] = useState(false)
 
   // Scale modal
   const [scaleVisible, setScaleVisible] = useState(false)
@@ -119,6 +271,25 @@ const WorkloadList: React.FC<WorkloadListProps> = ({ kind }) => {
 
   const handleCreate = async () => {
     try {
+      if (createMode === 'yaml') {
+        if (!yamlText.trim()) {
+          message.error('请输入 YAML 内容')
+          return
+        }
+        setCreating(true)
+        await k8sService.applyYaml(selectedCluster, {
+          yaml: yamlText,
+          namespace: yamlNamespace || undefined,
+        })
+        message.success('YAML 已应用')
+        setCreateVisible(false)
+        setCurrentStep(0)
+        basicForm.resetFields()
+        containerForm.resetFields()
+        fetchResources()
+        return
+      }
+
       const basic = await basicForm.validateFields()
       const container = await containerForm.validateFields()
       setCreating(true)
@@ -193,6 +364,184 @@ const WorkloadList: React.FC<WorkloadListProps> = ({ kind }) => {
       message.success('重启已触发')
       fetchResources()
     } catch { /* handled */ }
+  }
+
+  const loadDetailYaml = async (force = false) => {
+    if (!currentResource || !selectedCluster) return
+    if (detailYaml && !force) return
+    setDetailYamlLoading(true)
+    try {
+      const res = await k8sService.getYaml(selectedCluster, {
+        kind,
+        name: currentResource.name,
+        namespace: currentResource.namespace,
+      })
+      setDetailYaml(res.data || '')
+    } catch {
+      message.error('获取 YAML 失败')
+    } finally {
+      setDetailYamlLoading(false)
+    }
+  }
+
+  const openHistory = async () => {
+    if (!selectedCluster || !yamlTarget) {
+      message.warning('请先选择资源')
+      return
+    }
+    setHistoryVisible(true)
+    setHistoryLoading(true)
+    try {
+      const res = await k8sService.getYamlHistory(selectedCluster, {
+        kind,
+        name: yamlTarget.name,
+        namespace: yamlTarget.namespace,
+        limit: 20,
+      })
+      setHistoryItems(res.data || [])
+    } catch {
+      message.error('获取历史版本失败')
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
+
+  const handleHistoryRestore = (yaml: string) => {
+    setYamlEditorText(yaml)
+    setHistoryVisible(false)
+  }
+
+  const handleHistoryRollback = (yaml: string) => {
+    if (!selectedCluster) return
+    Modal.confirm({
+      title: '确认回滚并应用？',
+      content: '将使用历史版本覆盖当前资源配置。',
+      okText: '回滚并应用',
+      okButtonProps: { danger: true },
+      cancelText: '取消',
+      onOk: async () => {
+        await k8sService.applyYaml(selectedCluster, { yaml, action: 'rollback' })
+        message.success('已回滚并应用')
+        setHistoryVisible(false)
+        setYamlVisible(false)
+        fetchResources()
+      },
+    })
+  }
+
+  const handleFormatYaml = async () => {
+    if (!selectedCluster) {
+      message.warning('请先选择集群')
+      return
+    }
+    if (!yamlText.trim()) {
+      message.error('请输入 YAML 内容')
+      return
+    }
+    setYamlActionLoading(true)
+    try {
+      const res = await k8sService.formatYaml(selectedCluster, { yaml: yamlText })
+      setYamlText(res.data || '')
+      message.success('已格式化')
+    } catch { /* handled */ }
+    finally { setYamlActionLoading(false) }
+  }
+
+  const handleValidateYaml = async () => {
+    if (!selectedCluster) {
+      message.warning('请先选择集群')
+      return
+    }
+    if (!yamlText.trim()) {
+      message.error('请输入 YAML 内容')
+      return
+    }
+    setYamlActionLoading(true)
+    try {
+      await k8sService.applyYaml(selectedCluster, {
+        yaml: yamlText,
+        namespace: yamlNamespace || undefined,
+        dry_run: true,
+      })
+      message.success('校验通过')
+    } catch { /* handled */ }
+    finally { setYamlActionLoading(false) }
+  }
+
+  const openYamlEditor = async (record: K8sResource) => {
+    if (!selectedCluster) {
+      message.warning('请先选择集群')
+      return
+    }
+    setYamlVisible(true)
+    setYamlTarget({ name: record.name, namespace: record.namespace })
+    setYamlEditorText('')
+    setYamlOriginal('')
+    setDiffVisible(false)
+    setYamlLoading(true)
+    try {
+      const res = await k8sService.getYaml(selectedCluster, { kind, name: record.name, namespace: record.namespace })
+      setYamlEditorText(res.data || '')
+      setYamlOriginal(res.data || '')
+    } catch {
+      message.error('获取 YAML 失败')
+    } finally {
+      setYamlLoading(false)
+    }
+  }
+
+  const formatYamlEdit = async () => {
+    if (!selectedCluster) {
+      message.warning('请先选择集群')
+      return
+    }
+    if (!yamlEditorText.trim()) {
+      message.error('请输入 YAML 内容')
+      return
+    }
+    setYamlLoading(true)
+    try {
+      const res = await k8sService.formatYaml(selectedCluster, { yaml: yamlEditorText })
+      setYamlEditorText(res.data || '')
+      message.success('已格式化')
+    } catch { /* handled */ }
+    finally { setYamlLoading(false) }
+  }
+
+  const validateYamlEdit = async () => {
+    if (!selectedCluster) {
+      message.warning('请先选择集群')
+      return
+    }
+    if (!yamlEditorText.trim()) {
+      message.error('请输入 YAML 内容')
+      return
+    }
+    setYamlLoading(true)
+    try {
+      await k8sService.applyYaml(selectedCluster, { yaml: yamlEditorText, dry_run: true })
+      message.success('校验通过')
+    } catch { /* handled */ }
+    finally { setYamlLoading(false) }
+  }
+
+  const applyYamlEdit = async () => {
+    if (!selectedCluster) {
+      message.warning('请先选择集群')
+      return
+    }
+    if (!yamlEditorText.trim()) {
+      message.error('请输入 YAML 内容')
+      return
+    }
+    setYamlLoading(true)
+    try {
+      await k8sService.applyYaml(selectedCluster, { yaml: yamlEditorText })
+      message.success('YAML 已应用')
+      setYamlVisible(false)
+      fetchResources()
+    } catch { /* handled */ }
+    finally { setYamlLoading(false) }
   }
 
   const columns: ColumnsType<K8sResource> = [
@@ -273,8 +622,20 @@ const WorkloadList: React.FC<WorkloadListProps> = ({ kind }) => {
       width: kind === 'Deployment' ? 200 : kind === 'StatefulSet' ? 160 : 120,
       render: (_, record) => (
         <Space size={4}>
-          <Button type="link" size="small" onClick={() => { setCurrentResource(record); setDetailVisible(true) }}>
+          <Button
+            type="link"
+            size="small"
+            onClick={() => {
+              setCurrentResource(record)
+              setDetailTab('detail')
+              setDetailYaml('')
+              setDetailVisible(true)
+            }}
+          >
             详情
+          </Button>
+          <Button type="link" size="small" onClick={() => openYamlEditor(record)}>
+            YAML
           </Button>
           {(kind === 'Deployment' || kind === 'StatefulSet') && (
             <Button
@@ -457,35 +818,49 @@ const WorkloadList: React.FC<WorkloadListProps> = ({ kind }) => {
   }
 
   return (
-    <div>
-      <div className="page-header">
-        <div className="page-header-left">
-          <h2>{config.title}</h2>
-          <p>{config.desc}</p>
+    <div className="page-shell fade-in">
+      <div className="page-hero">
+        <div>
+          <div className="page-hero-title">{config.title}</div>
+          <p className="page-hero-subtitle">{config.desc}</p>
+        </div>
+        <div className="page-hero-actions">
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => {
+              const defaultNs = selectedNs || namespaces[0]?.name || 'default'
+              setCreateMode('form')
+              setYamlTemplate('basic')
+              setYamlNamespace(defaultNs)
+              setYamlText(workloadYamlTemplate(kind, defaultNs, 'basic'))
+              setCurrentStep(0)
+              basicForm.resetFields()
+              containerForm.resetFields()
+              setCreateVisible(true)
+            }}
+          >
+            创建{config.title}
+          </Button>
+          <Button icon={<ReloadOutlined />} onClick={fetchResources}>刷新</Button>
         </div>
       </div>
 
-      <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
-        <Col xs={8}>
-          <Card className="stat-card" bordered={false} style={{ background: '#f0f5ff' }}>
-            <Statistic title="总数" value={resources.length} prefix={<AppstoreOutlined style={{ color: '#4f46e5' }} />} />
-          </Card>
-        </Col>
-        <Col xs={8}>
-          <Card className="stat-card" bordered={false} style={{ background: '#f6ffed' }}>
-            <Statistic title="正常" value={runningCount} prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />} />
-          </Card>
-        </Col>
-        <Col xs={8}>
-          <Card className="stat-card" bordered={false} style={{ background: '#fff2f0' }}>
-            <Statistic title="异常" value={abnormalCount} prefix={<CloseCircleOutlined style={{ color: '#ff4d4f' }} />} />
-          </Card>
-        </Col>
-      </Row>
+      <div className="metric-grid">
+        <Card className="metric-card metric-card--primary" bordered={false}>
+          <Statistic title="总数" value={resources.length} prefix={<AppstoreOutlined style={{ color: '#0ea5e9' }} />} />
+        </Card>
+        <Card className="metric-card metric-card--success" bordered={false}>
+          <Statistic title="正常" value={runningCount} prefix={<CheckCircleOutlined style={{ color: '#22c55e' }} />} />
+        </Card>
+        <Card className="metric-card metric-card--danger" bordered={false}>
+          <Statistic title="异常" value={abnormalCount} prefix={<CloseCircleOutlined style={{ color: '#ef4444' }} />} />
+        </Card>
+      </div>
 
       <Card className="section-card" bordered={false}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-          <Space>
+        <div className="toolbar">
+          <div className="toolbar-left">
             <Select
               style={{ width: 200 }}
               placeholder="选择集群"
@@ -510,18 +885,13 @@ const WorkloadList: React.FC<WorkloadListProps> = ({ kind }) => {
             <Input
               placeholder={`搜索${config.title}`}
               prefix={<SearchOutlined />}
-              style={{ width: 200 }}
+              style={{ width: 220 }}
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
               allowClear
             />
-          </Space>
-          <Space>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateVisible(true)}>
-              创建{config.title}
-            </Button>
-            <Button icon={<ReloadOutlined />} onClick={fetchResources}>刷新</Button>
-          </Space>
+          </div>
+          <div className="toolbar-right" />
         </div>
         <Table
           columns={columns}
@@ -540,41 +910,66 @@ const WorkloadList: React.FC<WorkloadListProps> = ({ kind }) => {
         onClose={() => setDetailVisible(false)}
       >
         {currentResource && (
-          <>
-            <Descriptions bordered column={1} style={{ marginBottom: 24 }}>
-              <Descriptions.Item label="名称">{currentResource.name}</Descriptions.Item>
-              <Descriptions.Item label="命名空间">{currentResource.namespace}</Descriptions.Item>
-              <Descriptions.Item label="类型">{kind}</Descriptions.Item>
-              <Descriptions.Item label="状态">
-                <Tag color={
-                  currentResource.status === 'Running' || currentResource.status === 'Active' ? 'green' :
-                  currentResource.status === 'Failed' ? 'red' : 'orange'
-                }>{currentResource.status}</Tag>
-              </Descriptions.Item>
-              {(kind === 'Deployment' || kind === 'StatefulSet') && (
-                <Descriptions.Item label="副本">{currentResource.ready}/{currentResource.replicas}</Descriptions.Item>
-              )}
-              {kind === 'CronJob' && currentResource.schedule && (
-                <Descriptions.Item label="调度表达式"><code>{currentResource.schedule}</code></Descriptions.Item>
-              )}
-              <Descriptions.Item label="镜像">
-                {currentResource.images?.map((img, i) => (
-                  <Tag key={i} style={{ marginBottom: 4 }}>{img}</Tag>
-                ))}
-              </Descriptions.Item>
-              <Descriptions.Item label="创建时间">
-                {dayjs(currentResource.created_at).format('YYYY-MM-DD HH:mm:ss')}
-              </Descriptions.Item>
-            </Descriptions>
-            {currentResource.yaml && (
-              <>
-                <h4>YAML</h4>
-                <pre style={{ background: '#f5f5f5', padding: 16, borderRadius: 8, overflow: 'auto', maxHeight: 400, fontSize: 12 }}>
-                  {currentResource.yaml}
-                </pre>
-              </>
-            )}
-          </>
+          <Tabs
+            activeKey={detailTab}
+            onChange={(key) => {
+              const next = key as 'detail' | 'yaml'
+              setDetailTab(next)
+              if (next === 'yaml') {
+                loadDetailYaml()
+              }
+            }}
+            items={[
+              {
+                key: 'detail',
+                label: '详情',
+                children: (
+                  <Descriptions bordered column={1} style={{ marginBottom: 24 }}>
+                    <Descriptions.Item label="名称">{currentResource.name}</Descriptions.Item>
+                    <Descriptions.Item label="命名空间">{currentResource.namespace}</Descriptions.Item>
+                    <Descriptions.Item label="类型">{kind}</Descriptions.Item>
+                    <Descriptions.Item label="状态">
+                      <Tag color={
+                        currentResource.status === 'Running' || currentResource.status === 'Active' ? 'green' :
+                        currentResource.status === 'Failed' ? 'red' : 'orange'
+                      }>{currentResource.status}</Tag>
+                    </Descriptions.Item>
+                    {(kind === 'Deployment' || kind === 'StatefulSet') && (
+                      <Descriptions.Item label="副本">{currentResource.ready}/{currentResource.replicas}</Descriptions.Item>
+                    )}
+                    {kind === 'CronJob' && currentResource.schedule && (
+                      <Descriptions.Item label="调度表达式"><code>{currentResource.schedule}</code></Descriptions.Item>
+                    )}
+                    <Descriptions.Item label="镜像">
+                      {currentResource.images?.map((img, i) => (
+                        <Tag key={i} style={{ marginBottom: 4 }}>{img}</Tag>
+                      ))}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="创建时间">
+                      {dayjs(currentResource.created_at).format('YYYY-MM-DD HH:mm:ss')}
+                    </Descriptions.Item>
+                  </Descriptions>
+                ),
+              },
+              {
+                key: 'yaml',
+                label: 'YAML',
+                children: (
+                  <>
+                    <Space style={{ marginBottom: 12 }}>
+                      <Button type="primary" onClick={() => openYamlEditor(currentResource)}>编辑 YAML</Button>
+                      <Button onClick={() => loadDetailYaml(true)}>刷新</Button>
+                    </Space>
+                    <Spin spinning={detailYamlLoading}>
+                      <pre style={{ background: '#f8fafc', padding: 16, borderRadius: 8, overflow: 'auto', maxHeight: 420, fontSize: 12 }}>
+                        {detailYaml || '暂无 YAML'}
+                      </pre>
+                    </Spin>
+                  </>
+                ),
+              },
+            ]}
+          />
         )}
       </Drawer>
 
@@ -585,28 +980,105 @@ const WorkloadList: React.FC<WorkloadListProps> = ({ kind }) => {
         onCancel={() => { setCreateVisible(false); setCurrentStep(0) }}
         width={640}
         footer={
-          <Space>
-            {currentStep > 0 && (
-              <Button onClick={() => setCurrentStep(currentStep - 1)}>上一步</Button>
-            )}
-            {currentStep < 2 && (
-              <Button type="primary" onClick={async () => {
-                if (currentStep === 0) {
-                  await basicForm.validateFields()
-                } else if (currentStep === 1) {
-                  await containerForm.validateFields()
-                }
-                setCurrentStep(currentStep + 1)
-              }}>下一步</Button>
-            )}
-            {currentStep === 2 && (
-              <Button type="primary" loading={creating} onClick={handleCreate}>确认创建</Button>
-            )}
-          </Space>
+          createMode === 'yaml' ? (
+            <Space>
+              <Button onClick={() => { setCreateVisible(false); setCurrentStep(0) }}>取消</Button>
+              <Button type="primary" loading={creating} onClick={handleCreate}>应用 YAML</Button>
+            </Space>
+          ) : (
+            <Space>
+              {currentStep > 0 && (
+                <Button onClick={() => setCurrentStep(currentStep - 1)}>上一步</Button>
+              )}
+              {currentStep < 2 && (
+                <Button type="primary" onClick={async () => {
+                  if (currentStep === 0) {
+                    await basicForm.validateFields()
+                  } else if (currentStep === 1) {
+                    await containerForm.validateFields()
+                  }
+                  setCurrentStep(currentStep + 1)
+                }}>下一步</Button>
+              )}
+              {currentStep === 2 && (
+                <Button type="primary" loading={creating} onClick={handleCreate}>确认创建</Button>
+              )}
+            </Space>
+          )
         }
       >
-        <Steps current={currentStep} items={steps} style={{ marginBottom: 24 }} />
-        {renderStepContent()}
+        <Segmented
+          options={[
+            { label: '表单创建', value: 'form' },
+            { label: 'YAML 创建', value: 'yaml' },
+          ]}
+          value={createMode}
+          onChange={(value) => {
+            const mode = value as 'form' | 'yaml'
+            setCreateMode(mode)
+            if (mode === 'yaml' && !yamlText.trim()) {
+              const defaultNs = yamlNamespace || selectedNs || namespaces[0]?.name || 'default'
+              setYamlTemplate('basic')
+              setYamlNamespace(defaultNs)
+              setYamlText(workloadYamlTemplate(kind, defaultNs, 'basic'))
+            }
+            if (mode === 'form') {
+              setCurrentStep(0)
+            }
+          }}
+          style={{ marginBottom: 16 }}
+        />
+        {createMode === 'yaml' ? (
+          <Form layout="vertical">
+            <div className="yaml-toolbar">
+              <Select
+                value={yamlTemplate}
+                onChange={(value) => {
+                  const next = value as 'basic' | 'probes' | 'resources'
+                  const ns = yamlNamespace || selectedNs || namespaces[0]?.name || 'default'
+                  setYamlTemplate(next)
+                  setYamlText(workloadYamlTemplate(kind, ns, next))
+                }}
+                options={[
+                  { label: '基础模板', value: 'basic' },
+                  { label: '带探针', value: 'probes' },
+                  { label: '带资源限制', value: 'resources' },
+                ]}
+              />
+              <Button onClick={handleFormatYaml} loading={yamlActionLoading}>格式化</Button>
+              <Button onClick={handleValidateYaml} loading={yamlActionLoading}>校验</Button>
+            </div>
+            <Form.Item label="默认命名空间" extra="当 YAML 未指定 namespace 时使用">
+              <Select
+                allowClear
+                placeholder="从 YAML 读取"
+                value={yamlNamespace || undefined}
+                onChange={(v) => setYamlNamespace(v || '')}
+              >
+                {namespaces.map((ns) => (
+                  <Select.Option key={ns.name} value={ns.name}>{ns.name}</Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+            <Form.Item label="YAML" extra="支持多文档 YAML（---）">
+              <Input.TextArea
+                value={yamlText}
+                onChange={(e) => setYamlText(e.target.value)}
+                rows={16}
+                placeholder="粘贴或编写 Kubernetes YAML"
+                style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' }}
+              />
+            </Form.Item>
+            <Typography.Text type="secondary">
+              提示：直接粘贴 kubectl 导出的 YAML 即可，系统会自动忽略 status 字段。
+            </Typography.Text>
+          </Form>
+        ) : (
+          <>
+            <Steps current={currentStep} items={steps} style={{ marginBottom: 24 }} />
+            {renderStepContent()}
+          </>
+        )}
       </Modal>
 
       {/* Scale Modal */}
@@ -622,6 +1094,61 @@ const WorkloadList: React.FC<WorkloadListProps> = ({ kind }) => {
           <span style={{ marginLeft: 8, color: '#999' }}>当前: {scaleTarget?.replicas || 0}</span>
         </div>
       </Modal>
+
+      <Modal
+        title={`编辑 YAML - ${yamlTarget?.name || ''}`}
+        open={yamlVisible}
+        onCancel={() => setYamlVisible(false)}
+        width={720}
+        footer={(
+          <Space>
+            <Button onClick={() => setYamlVisible(false)}>关闭</Button>
+            <Button type="primary" loading={yamlLoading} onClick={applyYamlEdit}>应用 YAML</Button>
+          </Space>
+        )}
+      >
+        <Spin spinning={yamlLoading}>
+          <div className="yaml-toolbar">
+            <Button onClick={formatYamlEdit} loading={yamlLoading}>格式化</Button>
+            <Button onClick={validateYamlEdit} loading={yamlLoading}>校验</Button>
+            <Button onClick={openHistory}>历史版本</Button>
+            <Button onClick={() => setDiffVisible(true)} disabled={!yamlOriginal}>预览差异</Button>
+            <Button onClick={() => setYamlEditorText(yamlOriginal)} disabled={!yamlOriginal}>重置</Button>
+          </div>
+          <Input.TextArea
+            value={yamlEditorText}
+            onChange={(e) => setYamlEditorText(e.target.value)}
+            rows={18}
+            placeholder="加载中..."
+            style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' }}
+          />
+          <Typography.Text type="secondary">
+            提示：YAML 可包含多个资源（---），会按顺序应用。
+          </Typography.Text>
+        </Spin>
+      </Modal>
+
+      <Modal
+        title="YAML 差异预览"
+        open={diffVisible}
+        onCancel={() => setDiffVisible(false)}
+        width={760}
+        footer={(
+          <Button onClick={() => setDiffVisible(false)}>关闭</Button>
+        )}
+      >
+        <YamlDiffViewer original={yamlOriginal} modified={yamlEditorText} />
+      </Modal>
+
+      <YamlHistoryModal
+        open={historyVisible}
+        loading={historyLoading}
+        items={historyItems}
+        current={yamlEditorText}
+        onClose={() => setHistoryVisible(false)}
+        onRestore={handleHistoryRestore}
+        onRollback={handleHistoryRollback}
+      />
     </div>
   )
 }

@@ -92,3 +92,23 @@ type K8sResource struct {
 	Images    []string  `json:"images,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 }
+
+type K8sYAMLHistory struct {
+	ID        uuid.UUID `json:"id" gorm:"type:uuid;primary_key"`
+	ClusterID uuid.UUID `json:"cluster_id" gorm:"type:uuid;index:idx_k8s_yaml_resource,priority:1"`
+	Kind      string    `json:"kind" gorm:"size:40;index:idx_k8s_yaml_resource,priority:2"`
+	Namespace string    `json:"namespace" gorm:"size:200;index:idx_k8s_yaml_resource,priority:3"`
+	Name      string    `json:"name" gorm:"size:200;index:idx_k8s_yaml_resource,priority:4"`
+	YAML      string    `json:"yaml" gorm:"type:text"`
+	Action    string    `json:"action" gorm:"size:20"`
+	CreatedBy uuid.UUID `json:"created_by" gorm:"type:uuid"`
+	Username  string    `json:"username" gorm:"size:50"`
+	CreatedAt time.Time `json:"created_at" gorm:"index"`
+}
+
+func (h *K8sYAMLHistory) BeforeCreate(tx *gorm.DB) error {
+	if h.ID == uuid.Nil {
+		h.ID = uuid.New()
+	}
+	return nil
+}

@@ -5,8 +5,6 @@ import {
   Tag,
   Button,
   Space,
-  Row,
-  Col,
   Statistic,
   Select,
   Modal,
@@ -175,14 +173,14 @@ const PipelineList: React.FC = () => {
       dataIndex: 'branch',
       key: 'branch',
       width: 140,
-      render: (v: string) => <code style={{ fontSize: 12, background: '#f5f5f5', padding: '2px 8px', borderRadius: 4 }}>{v}</code>,
+      render: (v: string) => <code>{v}</code>,
     },
     {
       title: 'Commit',
       dataIndex: 'commit_id',
       key: 'commit_id',
       width: 100,
-      render: (v: string) => <code style={{ fontSize: 12, color: '#8c8c8c' }}>{v}</code>,
+      render: (v: string) => <code className="code-muted">{v}</code>,
     },
     {
       title: '提交信息',
@@ -245,49 +243,49 @@ const PipelineList: React.FC = () => {
   ]
 
   return (
-    <div>
-      <div className="page-header">
-        <div className="page-header-left">
-          <h2>版本管理</h2>
-          <p>管理应用版本、发布和回滚操作</p>
+    <div className="page-shell fade-in">
+      <div className="page-hero">
+        <div>
+          <div className="page-hero-title">版本管理</div>
+          <p className="page-hero-subtitle">管理应用版本、发布和回滚操作</p>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => { form.resetFields(); setModalVisible(true) }}>
-          创建版本
-        </Button>
+        <div className="page-hero-actions">
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => { form.resetFields(); setModalVisible(true) }}>
+            创建版本
+          </Button>
+        </div>
       </div>
 
-      <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
-        <Col xs={8}>
-          <Card className="stat-card" bordered={false} style={{ background: '#f0f5ff' }}>
-            <Statistic title="总版本数" value={filtered.length} prefix={<TagsOutlined style={{ color: '#4f46e5' }} />} />
-          </Card>
-        </Col>
-        <Col xs={8}>
-          <Card className="stat-card" bordered={false} style={{ background: '#f6ffed' }}>
-            <Statistic title="当前版本" value={currentCount} prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />} />
-          </Card>
-        </Col>
-        <Col xs={8}>
-          <Card className="stat-card" bordered={false} style={{ background: '#fffbe6' }}>
-            <Statistic title="待部署" value={filtered.filter((v) => v.deploy_count === 0).length} prefix={<ClockCircleOutlined style={{ color: '#faad14' }} />} />
-          </Card>
-        </Col>
-      </Row>
+      <div className="metric-grid">
+        <Card className="metric-card metric-card--primary" bordered={false}>
+          <Statistic title="总版本数" value={filtered.length} prefix={<TagsOutlined style={{ color: '#0ea5e9' }} />} />
+        </Card>
+        <Card className="metric-card metric-card--success" bordered={false}>
+          <Statistic title="当前版本" value={currentCount} prefix={<CheckCircleOutlined style={{ color: '#22c55e' }} />} />
+        </Card>
+        <Card className="metric-card metric-card--warning" bordered={false}>
+          <Statistic title="待部署" value={filtered.filter((v) => v.deploy_count === 0).length} prefix={<ClockCircleOutlined style={{ color: '#f59e0b' }} />} />
+        </Card>
+      </div>
 
       <Card className="section-card" bordered={false}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-          <Select
-            style={{ width: 200 }}
-            placeholder="全部应用"
-            allowClear
-            value={selectedApp || undefined}
-            onChange={(v) => setSelectedApp(v || '')}
-          >
-            {apps.map((a) => (
-              <Select.Option key={a.id} value={a.id}>{a.name}</Select.Option>
-            ))}
-          </Select>
-          <Button icon={<ReloadOutlined />} onClick={() => setLoading(false)}>刷新</Button>
+        <div className="toolbar">
+          <div className="toolbar-left">
+            <Select
+              style={{ width: 220 }}
+              placeholder="全部应用"
+              allowClear
+              value={selectedApp || undefined}
+              onChange={(v) => setSelectedApp(v || '')}
+            >
+              {apps.map((a) => (
+                <Select.Option key={a.id} value={a.id}>{a.name}</Select.Option>
+              ))}
+            </Select>
+          </div>
+          <div className="toolbar-right">
+            <Button icon={<ReloadOutlined />} onClick={() => setLoading(false)}>刷新</Button>
+          </div>
         </div>
         <Table
           columns={columns}

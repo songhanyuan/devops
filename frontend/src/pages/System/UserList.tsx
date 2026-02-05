@@ -12,11 +12,15 @@ import {
   Popconfirm,
   Switch,
   Card,
+  Statistic,
 } from 'antd'
 import {
   PlusOutlined,
   ReloadOutlined,
   KeyOutlined,
+  TeamOutlined,
+  CheckCircleOutlined,
+  UserOutlined,
 } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import { userService, User, Role } from '@/services/user'
@@ -146,6 +150,10 @@ const UserList: React.FC = () => {
     viewer: 'default',
   }
 
+  const totalCount = total || users.length
+  const activeCount = users.filter((u) => u.status === 1).length
+  const adminCount = users.filter((u) => u.role?.code === 'admin').length
+
   const columns: ColumnsType<User> = [
     { title: '用户名', dataIndex: 'username', key: 'username', width: 120 },
     { title: '姓名', dataIndex: 'real_name', key: 'real_name', width: 100 },
@@ -220,33 +228,48 @@ const UserList: React.FC = () => {
   ]
 
   return (
-    <div>
-      <div className="page-header">
-        <div className="page-header-left">
-          <h2>用户管理</h2>
-          <p>管理平台用户、角色与权限</p>
+    <div className="page-shell fade-in">
+      <div className="page-hero">
+        <div>
+          <div className="page-hero-title">用户管理</div>
+          <p className="page-hero-subtitle">管理平台用户、角色与权限</p>
         </div>
-      </div>
-
-      <Card className="section-card" bordered={false}>
-      <div style={{ padding: '0 0 16px', display: 'flex', justifyContent: 'space-between' }}>
-        <Space>
+        <div className="page-hero-actions">
           <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
             添加用户
           </Button>
+          <Button icon={<ReloadOutlined />} onClick={fetchUsers}>
+            刷新
+          </Button>
+        </div>
+      </div>
+
+      <div className="metric-grid">
+        <Card className="metric-card metric-card--primary" bordered={false}>
+          <Statistic title="用户总数" value={totalCount} prefix={<TeamOutlined style={{ color: '#0ea5e9' }} />} />
+        </Card>
+        <Card className="metric-card metric-card--success" bordered={false}>
+          <Statistic title="启用" value={activeCount} prefix={<CheckCircleOutlined style={{ color: '#22c55e' }} />} />
+        </Card>
+        <Card className="metric-card metric-card--warning" bordered={false}>
+          <Statistic title="管理员" value={adminCount} prefix={<UserOutlined style={{ color: '#f59e0b' }} />} />
+        </Card>
+      </div>
+
+      <Card className="section-card" bordered={false}>
+      <div className="toolbar">
+        <div className="toolbar-left">
           <Input.Search
             placeholder="搜索用户名、姓名、邮箱"
             allowClear
-            style={{ width: 250 }}
+            style={{ width: 260 }}
             onSearch={(value) => {
               setKeyword(value)
               setPage(1)
             }}
           />
-        </Space>
-        <Button icon={<ReloadOutlined />} onClick={fetchUsers}>
-          刷新
-        </Button>
+        </div>
+        <div className="toolbar-right" />
       </div>
 
       <Table

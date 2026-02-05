@@ -80,12 +80,23 @@ func applyEnvOverrides(cfg *Config) {
 	if v := os.Getenv("DB_NAME"); v != "" {
 		cfg.Database.DBName = v
 	}
+	if v := os.Getenv("DB_SSLMODE"); v != "" {
+		cfg.Database.SSLMode = v
+	}
 	if v := os.Getenv("REDIS_HOST"); v != "" {
 		cfg.Redis.Host = v
 	}
 	if v := os.Getenv("REDIS_PORT"); v != "" {
 		if p, err := strconv.Atoi(v); err == nil {
 			cfg.Redis.Port = p
+		}
+	}
+	if v := os.Getenv("REDIS_PASSWORD"); v != "" {
+		cfg.Redis.Password = v
+	}
+	if v := os.Getenv("REDIS_DB"); v != "" {
+		if p, err := strconv.Atoi(v); err == nil {
+			cfg.Redis.DB = p
 		}
 	}
 	if v := os.Getenv("JWT_SECRET"); v != "" {

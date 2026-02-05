@@ -86,3 +86,52 @@ func (r *ClusterRepository) UpdateStatus(id uuid.UUID, status int, nodeCount, po
 			"last_check_at": gorm.Expr("NOW()"),
 		}).Error
 }
+
+type K8sYAMLHistoryRepository struct {
+	db *gorm.DB
+}
+
+func NewK8sYAMLHistoryRepository(db *gorm.DB) *K8sYAMLHistoryRepository {
+	return &K8sYAMLHistoryRepository{db: db}
+}
+
+func (r *K8sYAMLHistoryRepository) Create(history *model.K8sYAMLHistory) error {
+	return r.db.Create(history).Error
+}
+
+func (r *K8sYAMLHistoryRepository) ListByResource(clusterID uuid.UUID, kind, namespace, name string, limit int) ([]model.K8sYAMLHistory, error) {
+	var histories []model.K8sYAMLHistory
+	query := r.db.Where("cluster_id = ? AND kind = ? AND name = ?", clusterID, kind, name)
+	if namespace != "" {
+		query = query.Where("namespace = ?", namespace)
+	} else {
+		query = query.Where("namespace = '' OR namespace IS NULL")
+	}
+	if limit <= 0 {
+		limit = 20
+	}
+	err := query.Order("created_at DESC").Limit(limit).Find(&histories).Error
+	return histories, err
+}
+
+func (r *K8sYAMLHistoryRepository) TrimHistory(clusterID uuid.UUID, kind, namespace, name string, keep int) error {
+	if keep <= 0 {
+		return nil
+	}
+
+	var ids []uuid.UUID
+	query := r.db.Model(&model.K8sYAMLHistory{}).
+		Where("cluster_id = ? AND kind = ? AND name = ?", clusterID, kind, name)
+	if namespace != "" {
+		query = query.Where("namespace = ?", namespace)
+	} else {
+		query = query.Where("namespace = '' OR namespace IS NULL")
+	}
+	if err := query.Order("created_at DESC").Offset(keep).Pluck("id", &ids).Error; err != nil {
+		return err
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	return r.db.Delete(&model.K8sYAMLHistory{}, "id IN ?", ids).Error
+}

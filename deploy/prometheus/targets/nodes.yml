@@ -1,0 +1,3 @@
+- targets: []
+  labels:
+    job: node

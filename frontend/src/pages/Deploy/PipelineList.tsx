@@ -5,8 +5,6 @@ import {
   Tag,
   Button,
   Space,
-  Row,
-  Col,
   Statistic,
   Modal,
   Form,
@@ -202,9 +200,7 @@ const PipelineList: React.FC = () => {
       dataIndex: 'branch',
       key: 'branch',
       width: 140,
-      render: (v: string) => (
-        <code style={{ fontSize: 12, background: '#f5f5f5', padding: '2px 8px', borderRadius: 4 }}>{v}</code>
-      ),
+      render: (v: string) => <code>{v}</code>,
     },
     {
       title: '状态',
@@ -224,7 +220,7 @@ const PipelineList: React.FC = () => {
         const done = record.stages.filter((s) => s.status === 'success').length
         const total = record.stages.length
         const pct = Math.round((done / total) * 100)
-        const color = record.status === 'failed' ? '#ff4d4f' : record.status === 'success' ? '#52c41a' : '#4f46e5'
+        const color = record.status === 'failed' ? '#ff4d4f' : record.status === 'success' ? '#52c41a' : '#0ea5e9'
         return <Progress percent={pct} size="small" strokeColor={color} format={() => `${done}/${total}`} />
       },
     },
@@ -279,34 +275,30 @@ const PipelineList: React.FC = () => {
   }
 
   return (
-    <div>
-      <div className="page-header">
-        <div className="page-header-left">
-          <h2>CI/CD 流水线</h2>
-          <p>管理持续集成和持续部署流水线</p>
+    <div className="page-shell fade-in">
+      <div className="page-hero">
+        <div>
+          <div className="page-hero-title">CI/CD 流水线</div>
+          <p className="page-hero-subtitle">管理持续集成和持续部署流水线</p>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => { form.resetFields(); setModalVisible(true) }}>
-          新建流水线
-        </Button>
+        <div className="page-hero-actions">
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => { form.resetFields(); setModalVisible(true) }}>
+            新建流水线
+          </Button>
+        </div>
       </div>
 
-      <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
-        <Col xs={8}>
-          <Card className="stat-card" bordered={false} style={{ background: '#f6ffed' }}>
-            <Statistic title="成功" value={successCount} prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />} />
-          </Card>
-        </Col>
-        <Col xs={8}>
-          <Card className="stat-card" bordered={false} style={{ background: '#e6f7ff' }}>
-            <Statistic title="运行中" value={runningCount} prefix={<SyncOutlined spin style={{ color: '#1890ff' }} />} />
-          </Card>
-        </Col>
-        <Col xs={8}>
-          <Card className="stat-card" bordered={false} style={{ background: '#fff2f0' }}>
-            <Statistic title="失败" value={failedCount} prefix={<CloseCircleOutlined style={{ color: '#ff4d4f' }} />} />
-          </Card>
-        </Col>
-      </Row>
+      <div className="metric-grid">
+        <Card className="metric-card metric-card--success" bordered={false}>
+          <Statistic title="成功" value={successCount} prefix={<CheckCircleOutlined style={{ color: '#22c55e' }} />} />
+        </Card>
+        <Card className="metric-card metric-card--primary" bordered={false}>
+          <Statistic title="运行中" value={runningCount} prefix={<SyncOutlined spin style={{ color: '#0ea5e9' }} />} />
+        </Card>
+        <Card className="metric-card metric-card--danger" bordered={false}>
+          <Statistic title="失败" value={failedCount} prefix={<CloseCircleOutlined style={{ color: '#ef4444' }} />} />
+        </Card>
+      </div>
 
       <Card className="section-card" bordered={false}>
         <Table
@@ -361,7 +353,7 @@ const PipelineList: React.FC = () => {
             <div style={{ marginBottom: 24 }}>
               <Space>
                 <Tag>{currentPipeline.app_name}</Tag>
-                <code style={{ background: '#f5f5f5', padding: '2px 8px', borderRadius: 4 }}>{currentPipeline.branch}</code>
+                <code>{currentPipeline.branch}</code>
                 {(() => {
                   const cfg = statusConfig[currentPipeline.status]
                   return <Tag icon={cfg.icon} color={cfg.color}>{cfg.text}</Tag>

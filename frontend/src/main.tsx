@@ -12,20 +12,20 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       locale={zhCN}
       theme={{
         token: {
-          colorPrimary: '#4f46e5',
+          colorPrimary: '#0ea5e9',
           borderRadius: 8,
           colorBgContainer: '#ffffff',
-          fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+          fontFamily: "'Manrope', 'Sora', sans-serif",
         },
         components: {
           Layout: {
-            siderBg: '#1a1a2e',
+            siderBg: '#0b1120',
             headerBg: '#ffffff',
           },
           Menu: {
-            darkItemBg: '#1a1a2e',
-            darkSubMenuItemBg: '#16162a',
-            darkItemSelectedBg: '#4f46e5',
+            darkItemBg: '#0b1120',
+            darkSubMenuItemBg: '#0f172a',
+            darkItemSelectedBg: '#0ea5e9',
             itemBorderRadius: 8,
             itemMarginInline: 8,
           },

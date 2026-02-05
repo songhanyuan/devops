@@ -12,8 +12,9 @@ import {
   message,
   Popconfirm,
   Card,
+  Statistic,
 } from 'antd'
-import { PlusOutlined, ReloadOutlined } from '@ant-design/icons'
+import { PlusOutlined, ReloadOutlined, CloudServerOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import { appService, Application, Environment } from '@/services/app'
 
@@ -110,6 +111,10 @@ const AppList: React.FC = () => {
     { label: 'Node.js', value: 'nodejs' },
   ]
 
+  const totalCount = total || apps.length
+  const activeCount = apps.filter((a) => a.status === 1).length
+  const disabledCount = apps.filter((a) => a.status === 0).length
+
   const columns: ColumnsType<Application> = [
     { title: '应用名称', dataIndex: 'name', key: 'name', width: 150 },
     { title: '应用代码', dataIndex: 'code', key: 'code', width: 120 },
@@ -164,43 +169,52 @@ const AppList: React.FC = () => {
   ]
 
   return (
-    <div>
-      <div className="page-header">
-        <div className="page-header-left">
-          <h2>应用管理</h2>
-          <p>管理应用生命周期，支持多环境部署</p>
+    <div className="page-shell fade-in">
+      <div className="page-hero">
+        <div>
+          <div className="page-hero-title">应用管理</div>
+          <p className="page-hero-subtitle">管理应用生命周期，支持多环境部署</p>
         </div>
-      </div>
-
-      <Card className="section-card" bordered={false}>
-      <div style={{ padding: '0 0 16px', display: 'flex', justifyContent: 'space-between' }}>
-        <Space>
+        <div className="page-hero-actions">
           <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
             添加应用
           </Button>
-        </Space>
-        <Button icon={<ReloadOutlined />} onClick={fetchApps}>
-          刷新
-        </Button>
+          <Button icon={<ReloadOutlined />} onClick={fetchApps}>
+            刷新
+          </Button>
+        </div>
       </div>
 
-      <Table
-        columns={columns}
-        dataSource={apps}
-        rowKey="id"
-        loading={loading}
-        pagination={{
-          current: page,
-          pageSize,
-          total,
-          showSizeChanger: true,
-          showTotal: (t) => `共 ${t} 条`,
-          onChange: (p, ps) => {
-            setPage(p)
-            setPageSize(ps)
-          },
-        }}
-      />
+      <div className="metric-grid">
+        <Card className="metric-card metric-card--primary" bordered={false}>
+          <Statistic title="应用总数" value={totalCount} prefix={<CloudServerOutlined style={{ color: '#0ea5e9' }} />} />
+        </Card>
+        <Card className="metric-card metric-card--success" bordered={false}>
+          <Statistic title="启用" value={activeCount} prefix={<CheckCircleOutlined style={{ color: '#22c55e' }} />} />
+        </Card>
+        <Card className="metric-card metric-card--danger" bordered={false}>
+          <Statistic title="禁用" value={disabledCount} prefix={<CloseCircleOutlined style={{ color: '#ef4444' }} />} />
+        </Card>
+      </div>
+
+      <Card className="section-card" bordered={false}>
+        <Table
+          columns={columns}
+          dataSource={apps}
+          rowKey="id"
+          loading={loading}
+          pagination={{
+            current: page,
+            pageSize,
+            total,
+            showSizeChanger: true,
+            showTotal: (t) => `共 ${t} 条`,
+            onChange: (p, ps) => {
+              setPage(p)
+              setPageSize(ps)
+            },
+          }}
+        />
       </Card>
 
       <Modal

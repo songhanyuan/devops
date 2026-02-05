@@ -6,12 +6,14 @@ import {
   Select,
   Space,
   Button,
-  Row,
-  Col,
   Statistic,
   Input,
   Drawer,
   Descriptions,
+  Tabs,
+  Spin,
+  Modal,
+  message,
   Tooltip,
 } from 'antd'
 import {
@@ -24,7 +26,9 @@ import {
 } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
-import { k8sService, Cluster, K8sResource, K8sNamespace } from '@/services/k8s'
+import { k8sService, Cluster, K8sResource, K8sNamespace, K8sYamlHistory } from '@/services/k8s'
+import YamlDiffViewer from '@/components/YamlDiffViewer'
+import YamlHistoryModal from '@/components/YamlHistoryModal'
 
 const PodList: React.FC = () => {
   const [loading, setLoading] = useState(false)
@@ -36,6 +40,18 @@ const PodList: React.FC = () => {
   const [keyword, setKeyword] = useState('')
   const [detailVisible, setDetailVisible] = useState(false)
   const [currentPod, setCurrentPod] = useState<K8sResource | null>(null)
+  const [detailTab, setDetailTab] = useState<'detail' | 'yaml'>('detail')
+  const [detailYaml, setDetailYaml] = useState('')
+  const [detailYamlLoading, setDetailYamlLoading] = useState(false)
+  const [yamlVisible, setYamlVisible] = useState(false)
+  const [yamlEditorLoading, setYamlEditorLoading] = useState(false)
+  const [yamlEditorText, setYamlEditorText] = useState('')
+  const [yamlTarget, setYamlTarget] = useState<{ name: string; namespace: string } | null>(null)
+  const [yamlOriginal, setYamlOriginal] = useState('')
+  const [diffVisible, setDiffVisible] = useState(false)
+  const [historyVisible, setHistoryVisible] = useState(false)
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyItems, setHistoryItems] = useState<K8sYamlHistory[]>([])
 
   const fetchClusters = async () => {
     try {
@@ -76,6 +92,141 @@ const PodList: React.FC = () => {
   const pendingCount = pods.filter((p) => p.status === 'Pending').length
   const failedCount = pods.filter((p) => p.status === 'Failed' || p.status === 'CrashLoopBackOff').length
 
+  const loadDetailYaml = async (force = false) => {
+    if (!currentPod || !selectedCluster) return
+    if (detailYaml && !force) return
+    setDetailYamlLoading(true)
+    try {
+      const res = await k8sService.getYaml(selectedCluster, { kind: 'Pod', name: currentPod.name, namespace: currentPod.namespace })
+      setDetailYaml(res.data || '')
+    } catch {
+      message.error('获取 YAML 失败')
+    } finally {
+      setDetailYamlLoading(false)
+    }
+  }
+
+  const openYamlEditor = async (record: K8sResource) => {
+    if (!selectedCluster) {
+      message.warning('请先选择集群')
+      return
+    }
+    setYamlVisible(true)
+    setYamlTarget({ name: record.name, namespace: record.namespace })
+    setYamlEditorText('')
+    setYamlOriginal('')
+    setDiffVisible(false)
+    setYamlEditorLoading(true)
+    try {
+      const res = await k8sService.getYaml(selectedCluster, { kind: 'Pod', name: record.name, namespace: record.namespace })
+      setYamlEditorText(res.data || '')
+      setYamlOriginal(res.data || '')
+    } catch {
+      message.error('获取 YAML 失败')
+    } finally {
+      setYamlEditorLoading(false)
+    }
+  }
+
+  const openHistory = async () => {
+    if (!selectedCluster || !yamlTarget) {
+      message.warning('请先选择资源')
+      return
+    }
+    setHistoryVisible(true)
+    setHistoryLoading(true)
+    try {
+      const res = await k8sService.getYamlHistory(selectedCluster, {
+        kind: 'Pod',
+        name: yamlTarget.name,
+        namespace: yamlTarget.namespace,
+        limit: 20,
+      })
+      setHistoryItems(res.data || [])
+    } catch {
+      message.error('获取历史版本失败')
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
+
+  const handleHistoryRestore = (yaml: string) => {
+    setYamlEditorText(yaml)
+    setHistoryVisible(false)
+  }
+
+  const handleHistoryRollback = (yaml: string) => {
+    if (!selectedCluster) return
+    Modal.confirm({
+      title: '确认回滚并应用？',
+      content: '将使用历史版本覆盖当前资源配置。',
+      okText: '回滚并应用',
+      okButtonProps: { danger: true },
+      cancelText: '取消',
+      onOk: async () => {
+        await k8sService.applyYaml(selectedCluster, { yaml, action: 'rollback' })
+        message.success('已回滚并应用')
+        setHistoryVisible(false)
+        setYamlVisible(false)
+        fetchPods()
+      },
+    })
+  }
+
+  const formatYamlEdit = async () => {
+    if (!selectedCluster) {
+      message.warning('请先选择集群')
+      return
+    }
+    if (!yamlEditorText.trim()) {
+      message.error('请输入 YAML 内容')
+      return
+    }
+    setYamlEditorLoading(true)
+    try {
+      const res = await k8sService.formatYaml(selectedCluster, { yaml: yamlEditorText })
+      setYamlEditorText(res.data || '')
+      message.success('已格式化')
+    } catch { /* handled */ }
+    finally { setYamlEditorLoading(false) }
+  }
+
+  const validateYamlEdit = async () => {
+    if (!selectedCluster) {
+      message.warning('请先选择集群')
+      return
+    }
+    if (!yamlEditorText.trim()) {
+      message.error('请输入 YAML 内容')
+      return
+    }
+    setYamlEditorLoading(true)
+    try {
+      await k8sService.applyYaml(selectedCluster, { yaml: yamlEditorText, dry_run: true })
+      message.success('校验通过')
+    } catch { /* handled */ }
+    finally { setYamlEditorLoading(false) }
+  }
+
+  const applyYamlEdit = async () => {
+    if (!selectedCluster) {
+      message.warning('请先选择集群')
+      return
+    }
+    if (!yamlEditorText.trim()) {
+      message.error('请输入 YAML 内容')
+      return
+    }
+    setYamlEditorLoading(true)
+    try {
+      await k8sService.applyYaml(selectedCluster, { yaml: yamlEditorText })
+      message.success('YAML 已应用')
+      setYamlVisible(false)
+      fetchPods()
+    } catch { /* handled */ }
+    finally { setYamlEditorLoading(false) }
+  }
+
   const columns: ColumnsType<K8sResource> = [
     {
       title: '名称',
@@ -85,7 +236,7 @@ const PodList: React.FC = () => {
       ellipsis: true,
       render: (name: string, record) => (
         <Tooltip title={name}>
-          <a onClick={() => { setCurrentPod(record); setDetailVisible(true) }}>
+          <a onClick={() => { setCurrentPod(record); setDetailTab('detail'); setDetailYaml(''); setDetailVisible(true) }}>
             {name}
           </a>
         </Tooltip>
@@ -134,43 +285,46 @@ const PodList: React.FC = () => {
       width: 170,
       render: (t: string) => dayjs(t).format('YYYY-MM-DD HH:mm:ss'),
     },
+    {
+      title: '操作',
+      key: 'action',
+      width: 80,
+      render: (_, record) => (
+        <Button type="link" size="small" onClick={() => openYamlEditor(record)}>YAML</Button>
+      ),
+    },
   ]
 
   return (
-    <div>
-      <div className="page-header">
-        <div className="page-header-left">
-          <h2>容器组</h2>
-          <p>跨集群查看和管理 Kubernetes Pod 资源</p>
+    <div className="page-shell fade-in">
+      <div className="page-hero">
+        <div>
+          <div className="page-hero-title">容器组</div>
+          <p className="page-hero-subtitle">跨集群查看和管理 Kubernetes Pod 资源</p>
+        </div>
+        <div className="page-hero-actions">
+          <Button icon={<ReloadOutlined />} onClick={fetchPods}>刷新</Button>
         </div>
       </div>
 
-      <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
-        <Col xs={6}>
-          <Card className="stat-card" bordered={false} style={{ background: '#f0f5ff' }}>
-            <Statistic title="Pod 总数" value={pods.length} prefix={<ContainerOutlined style={{ color: '#4f46e5' }} />} />
-          </Card>
-        </Col>
-        <Col xs={6}>
-          <Card className="stat-card" bordered={false} style={{ background: '#f6ffed' }}>
-            <Statistic title="Running" value={runningCount} prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />} />
-          </Card>
-        </Col>
-        <Col xs={6}>
-          <Card className="stat-card" bordered={false} style={{ background: '#fffbe6' }}>
-            <Statistic title="Pending" value={pendingCount} prefix={<ClockCircleOutlined style={{ color: '#faad14' }} />} />
-          </Card>
-        </Col>
-        <Col xs={6}>
-          <Card className="stat-card" bordered={false} style={{ background: '#fff2f0' }}>
-            <Statistic title="Failed" value={failedCount} prefix={<CloseCircleOutlined style={{ color: '#ff4d4f' }} />} />
-          </Card>
-        </Col>
-      </Row>
+      <div className="metric-grid">
+        <Card className="metric-card metric-card--primary" bordered={false}>
+          <Statistic title="Pod 总数" value={pods.length} prefix={<ContainerOutlined style={{ color: '#0ea5e9' }} />} />
+        </Card>
+        <Card className="metric-card metric-card--success" bordered={false}>
+          <Statistic title="Running" value={runningCount} prefix={<CheckCircleOutlined style={{ color: '#22c55e' }} />} />
+        </Card>
+        <Card className="metric-card metric-card--warning" bordered={false}>
+          <Statistic title="Pending" value={pendingCount} prefix={<ClockCircleOutlined style={{ color: '#f59e0b' }} />} />
+        </Card>
+        <Card className="metric-card metric-card--danger" bordered={false}>
+          <Statistic title="Failed" value={failedCount} prefix={<CloseCircleOutlined style={{ color: '#ef4444' }} />} />
+        </Card>
+      </div>
 
       <Card className="section-card" bordered={false}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-          <Space>
+        <div className="toolbar">
+          <div className="toolbar-left">
             <Select
               style={{ width: 200 }}
               placeholder="选择集群"
@@ -195,13 +349,13 @@ const PodList: React.FC = () => {
             <Input
               placeholder="搜索 Pod"
               prefix={<SearchOutlined />}
-              style={{ width: 200 }}
+              style={{ width: 220 }}
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
               allowClear
             />
-          </Space>
-          <Button icon={<ReloadOutlined />} onClick={fetchPods}>刷新</Button>
+          </div>
+          <div className="toolbar-right" />
         </div>
         <Table
           columns={columns}
@@ -219,24 +373,108 @@ const PodList: React.FC = () => {
         onClose={() => setDetailVisible(false)}
       >
         {currentPod && (
-          <Descriptions bordered column={1}>
-            <Descriptions.Item label="名称">{currentPod.name}</Descriptions.Item>
-            <Descriptions.Item label="命名空间">{currentPod.namespace}</Descriptions.Item>
-            <Descriptions.Item label="状态">
-              <Tag color={currentPod.status === 'Running' ? 'green' : 'orange'}>{currentPod.status}</Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label="就绪">{currentPod.ready}/{currentPod.replicas}</Descriptions.Item>
-            <Descriptions.Item label="镜像">
-              {currentPod.images?.map((img, i) => (
-                <Tag key={i} style={{ marginBottom: 4 }}>{img}</Tag>
-              ))}
-            </Descriptions.Item>
-            <Descriptions.Item label="创建时间">
-              {dayjs(currentPod.created_at).format('YYYY-MM-DD HH:mm:ss')}
-            </Descriptions.Item>
-          </Descriptions>
+          <Tabs
+            activeKey={detailTab}
+            onChange={(key) => {
+              const next = key as 'detail' | 'yaml'
+              setDetailTab(next)
+              if (next === 'yaml') {
+                loadDetailYaml()
+              }
+            }}
+            items={[
+              {
+                key: 'detail',
+                label: '详情',
+                children: (
+                  <Descriptions bordered column={1}>
+                    <Descriptions.Item label="名称">{currentPod.name}</Descriptions.Item>
+                    <Descriptions.Item label="命名空间">{currentPod.namespace}</Descriptions.Item>
+                    <Descriptions.Item label="状态">
+                      <Tag color={currentPod.status === 'Running' ? 'green' : 'orange'}>{currentPod.status}</Tag>
+                    </Descriptions.Item>
+                    <Descriptions.Item label="就绪">{currentPod.ready}/{currentPod.replicas}</Descriptions.Item>
+                    <Descriptions.Item label="镜像">
+                      {currentPod.images?.map((img, i) => (
+                        <Tag key={i} style={{ marginBottom: 4 }}>{img}</Tag>
+                      ))}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="创建时间">
+                      {dayjs(currentPod.created_at).format('YYYY-MM-DD HH:mm:ss')}
+                    </Descriptions.Item>
+                  </Descriptions>
+                ),
+              },
+              {
+                key: 'yaml',
+                label: 'YAML',
+                children: (
+                  <>
+                    <Space style={{ marginBottom: 12 }}>
+                      <Button type="primary" onClick={() => openYamlEditor(currentPod)}>编辑 YAML</Button>
+                      <Button onClick={() => loadDetailYaml(true)}>刷新</Button>
+                    </Space>
+                    <Spin spinning={detailYamlLoading}>
+                      <pre style={{ background: '#f8fafc', padding: 16, borderRadius: 8, overflow: 'auto', maxHeight: 420, fontSize: 12 }}>
+                        {detailYaml || '暂无 YAML'}
+                      </pre>
+                    </Spin>
+                  </>
+                ),
+              },
+            ]}
+          />
         )}
       </Drawer>
+
+      <Drawer
+        title="编辑 Pod YAML"
+        width={720}
+        open={yamlVisible}
+        onClose={() => setYamlVisible(false)}
+        extra={(
+          <Space>
+            <Button onClick={formatYamlEdit} loading={yamlEditorLoading}>格式化</Button>
+            <Button onClick={validateYamlEdit} loading={yamlEditorLoading}>校验</Button>
+            <Button onClick={openHistory}>历史版本</Button>
+            <Button onClick={() => setDiffVisible(true)} disabled={!yamlOriginal}>预览差异</Button>
+            <Button onClick={() => setYamlEditorText(yamlOriginal)} disabled={!yamlOriginal}>重置</Button>
+            <Button type="primary" loading={yamlEditorLoading} onClick={applyYamlEdit}>应用 YAML</Button>
+          </Space>
+        )}
+      >
+        <Spin spinning={yamlEditorLoading}>
+          <Input.TextArea
+            value={yamlEditorText}
+            onChange={(e) => setYamlEditorText(e.target.value)}
+            rows={20}
+            placeholder="加载中..."
+            style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' }}
+          />
+          <div style={{ marginTop: 8, color: '#64748b', fontSize: 12 }}>
+            提示：Pod 通常由控制器管理，直接修改可能被回滚。
+          </div>
+        </Spin>
+      </Drawer>
+
+      <Drawer
+        title="YAML 差异预览"
+        width={760}
+        open={diffVisible}
+        onClose={() => setDiffVisible(false)}
+      >
+        <YamlDiffViewer original={yamlOriginal} modified={yamlEditorText} />
+      </Drawer>
+
+      <YamlHistoryModal
+        open={historyVisible}
+        loading={historyLoading}
+        items={historyItems}
+        current={yamlEditorText}
+        onClose={() => setHistoryVisible(false)}
+        onRestore={handleHistoryRestore}
+        onRollback={handleHistoryRollback}
+      />
     </div>
   )
 }

@@ -262,7 +262,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const actualWidth = collapsed ? 64 : siderWidth
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
+    <Layout className="app-shell" style={{ minHeight: '100vh' }}>
       <div
         className="app-sider"
         style={{
@@ -277,10 +277,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           zIndex: 10,
           display: 'flex',
           flexDirection: 'column',
-          background: 'linear-gradient(180deg, #1a1a2e 0%, #16162a 100%)',
           overflow: 'hidden',
           transition: dragging.current ? 'none' : 'width 0.2s, min-width 0.2s, max-width 0.2s',
-          boxShadow: '4px 0 24px rgba(0, 0, 0, 0.08)',
+          boxShadow: '6px 0 24px rgba(15, 23, 42, 0.12)',
         }}
       >
         <div className="sidebar-logo">
@@ -315,7 +314,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               background: 'transparent',
               transition: 'background 0.2s',
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(79,70,229,0.4)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(14, 165, 233, 0.35)' }}
             onMouseLeave={(e) => { if (!dragging.current) e.currentTarget.style.background = 'transparent' }}
           />
         )}
@@ -325,12 +324,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           className="app-header"
           style={{
             padding: '0 24px',
-            background: '#fff',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             height: 64,
-            borderBottom: '1px solid #f0f0f0',
           }}
         >
           <Space size={16} align="center">
@@ -341,16 +338,16 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           </Space>
           <Space size={20}>
             <Badge count={0} size="small">
-              <BellOutlined style={{ fontSize: 18, color: '#595959', cursor: 'pointer' }} />
+              <BellOutlined style={{ fontSize: 18, color: '#334155', cursor: 'pointer' }} />
             </Badge>
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
               <Space style={{ cursor: 'pointer' }}>
                 <Avatar
                   size={32}
-                  style={{ background: '#4f46e5' }}
+                  style={{ background: '#0ea5e9' }}
                   icon={<UserOutlined />}
                 />
-                <span style={{ fontWeight: 500, color: '#262626' }}>
+                <span style={{ fontWeight: 600, color: '#0f172a' }}>
                   {user?.real_name || user?.username}
                 </span>
               </Space>
@@ -358,13 +355,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           </Space>
         </Header>
         <Content
-          style={{
-            margin: 24,
-            padding: 0,
-            background: 'linear-gradient(135deg, #f5f7fa 0%, #f8f9fc 100%)',
-            borderRadius: 0,
-            minHeight: 'calc(100vh - 64px - 48px)',
-          }}
+          className="app-content"
+          style={{ borderRadius: 0 }}
         >
           {children}
         </Content>

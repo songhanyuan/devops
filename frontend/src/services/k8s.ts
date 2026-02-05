@@ -97,6 +97,26 @@ export interface K8sSecret {
   yaml?: string
 }
 
+export interface K8sYamlHistory {
+  id: string
+  cluster_id: string
+  kind: string
+  namespace: string
+  name: string
+  yaml: string
+  action: string
+  created_by: string
+  username: string
+  created_at: string
+}
+
+export interface K8sApplyResult {
+  kind: string
+  name: string
+  namespace?: string
+  action: string
+}
+
 export interface CreateWorkloadParams {
   name: string
   namespace: string
@@ -132,6 +152,18 @@ export const k8sService = {
   // Connection test
   testConnection: (id: string) =>
     api.post<unknown, { data: ClusterOverview; message: string }>(`/clusters/${id}/test`),
+
+  applyYaml: (id: string, data: { yaml: string; namespace?: string; dry_run?: boolean; action?: string }) =>
+    api.post<unknown, { data: K8sApplyResult[]; message: string }>(`/clusters/${id}/apply`, data),
+
+  formatYaml: (id: string, data: { yaml: string }) =>
+    api.post<unknown, { data: string }>(`/clusters/${id}/format`, data),
+
+  getYaml: (id: string, params: { kind: string; name: string; namespace?: string }) =>
+    api.get<unknown, { data: string }>(`/clusters/${id}/yaml`, { params }),
+
+  getYamlHistory: (id: string, params: { kind: string; name: string; namespace?: string; limit?: number }) =>
+    api.get<unknown, { data: K8sYamlHistory[] }>(`/clusters/${id}/history`, { params }),
 
   // Cluster resources
   getOverview: (id: string) =>

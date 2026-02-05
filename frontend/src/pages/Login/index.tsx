@@ -118,7 +118,7 @@ const Login: React.FC = () => {
 
         <div className="login-footer">
           <div style={{ marginBottom: 8 }}>演示账号: admin / admin123</div>
-          <div style={{ color: '#c0c4cc', fontSize: 12 }}>DevOps Platform v1.0</div>
+          <div style={{ color: 'var(--ink-muted)', fontSize: 12 }}>DevOps Platform v1.0</div>
         </div>
       </div>
     </div>

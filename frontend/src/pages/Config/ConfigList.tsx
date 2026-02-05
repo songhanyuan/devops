@@ -15,12 +15,14 @@ import {
   Drawer,
   Timeline,
   Typography,
+  Statistic,
 } from 'antd'
 import {
   PlusOutlined,
   ReloadOutlined,
   HistoryOutlined,
   LockOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
@@ -120,6 +122,9 @@ const ConfigList: React.FC = () => {
     }
   }
 
+  const totalCount = total || configs.length
+  const secretCount = configs.filter((c) => c.is_secret).length
+
   const columns: ColumnsType<ConfigItem> = [
     {
       title: '配置键',
@@ -128,7 +133,7 @@ const ConfigList: React.FC = () => {
       width: 200,
       render: (key: string, record) => (
         <Space>
-          <code style={{ fontSize: 13, background: '#f5f5f5', padding: '2px 8px', borderRadius: 4 }}>{key}</code>
+          <code>{key}</code>
           {record.is_secret && <LockOutlined style={{ color: '#faad14', fontSize: 12 }} />}
         </Space>
       ),
@@ -194,20 +199,32 @@ const ConfigList: React.FC = () => {
   ]
 
   return (
-    <div>
-      <div className="page-header">
-        <div className="page-header-left">
-          <h2>配置管理</h2>
-          <p>集中管理应用配置项，支持多环境、加密存储和版本追溯</p>
+    <div className="page-shell fade-in">
+      <div className="page-hero">
+        <div>
+          <div className="page-hero-title">配置管理</div>
+          <p className="page-hero-subtitle">集中管理应用配置项，支持多环境、加密存储和版本追溯</p>
+        </div>
+        <div className="page-hero-actions">
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>添加配置</Button>
+          <Button icon={<ReloadOutlined />} onClick={fetchConfigs}>刷新</Button>
         </div>
       </div>
 
+      <div className="metric-grid">
+        <Card className="metric-card metric-card--primary" bordered={false}>
+          <Statistic title="配置总数" value={totalCount} prefix={<FileTextOutlined style={{ color: '#0ea5e9' }} />} />
+        </Card>
+        <Card className="metric-card metric-card--warning" bordered={false}>
+          <Statistic title="加密项" value={secretCount} prefix={<LockOutlined style={{ color: '#f59e0b' }} />} />
+        </Card>
+      </div>
+
       <Card className="section-card" bordered={false}>
-        <div style={{ padding: '0 0 16px', display: 'flex', justifyContent: 'space-between' }}>
-          <Space>
-            <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>添加配置</Button>
+        <div className="toolbar">
+          <div className="toolbar-left">
             <Select
-              style={{ width: 120 }}
+              style={{ width: 140 }}
               placeholder="选择环境"
               allowClear
               value={envFilter || undefined}
@@ -217,11 +234,11 @@ const ConfigList: React.FC = () => {
             <Input.Search
               placeholder="搜索配置键"
               allowClear
-              style={{ width: 200 }}
+              style={{ width: 240 }}
               onSearch={(v) => { setKeyword(v); setPage(1) }}
             />
-          </Space>
-          <Button icon={<ReloadOutlined />} onClick={fetchConfigs}>刷新</Button>
+          </div>
+          <div className="toolbar-right" />
         </div>
 
         <Table

@@ -28,6 +28,10 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
 		clusters.PUT("/:id", h.UpdateCluster)
 		clusters.DELETE("/:id", h.DeleteCluster)
 		clusters.POST("/:id/test", h.TestConnection)
+		clusters.GET("/:id/yaml", h.GetResourceYAML)
+		clusters.GET("/:id/history", h.GetYAMLHistory)
+		clusters.POST("/:id/apply", h.ApplyYAML)
+		clusters.POST("/:id/format", h.FormatYAML)
 		clusters.GET("/:id/overview", h.GetClusterOverview)
 		clusters.GET("/:id/nodes", h.GetNodes)
 		clusters.GET("/:id/namespaces", h.GetNamespaces)
@@ -251,6 +255,104 @@ func (h *Handler) GetServices(c *gin.Context) {
 	}
 
 	response.Success(c, services)
+}
+
+func (h *Handler) GetResourceYAML(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "无效的ID")
+		return
+	}
+
+	kind := c.Query("kind")
+	name := c.Query("name")
+	namespace := c.Query("namespace")
+	if kind == "" || name == "" {
+		response.BadRequest(c, "kind 与 name 必填")
+		return
+	}
+
+	yaml, err := h.k8sService.GetResourceYAML(id, kind, name, namespace)
+	if err != nil {
+		response.ServerError(c, err.Error())
+		return
+	}
+
+	response.Success(c, yaml)
+}
+
+func (h *Handler) ApplyYAML(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "无效的ID")
+		return
+	}
+
+	var req service.ApplyYAMLRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	claims := middleware.GetCurrentUser(c)
+	var createdBy uuid.UUID
+	var username string
+	if claims != nil {
+		createdBy = claims.UserID
+		username = claims.Username
+	}
+
+	results, err := h.k8sService.ApplyYAML(id, req.YAML, req.Namespace, req.DryRun, req.Action, createdBy, username)
+	if err != nil {
+		response.ServerError(c, err.Error())
+		return
+	}
+
+	message := "YAML 已应用"
+	if req.DryRun {
+		message = "YAML 校验通过"
+	}
+	response.SuccessWithMessage(c, message, results)
+}
+
+func (h *Handler) GetYAMLHistory(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "无效的ID")
+		return
+	}
+
+	kind := c.Query("kind")
+	name := c.Query("name")
+	namespace := c.Query("namespace")
+	limit := getIntParam(c, "limit", 20)
+	if limit <= 0 {
+		limit = 20
+	}
+
+	histories, err := h.k8sService.ListYAMLHistory(id, kind, namespace, name, limit)
+	if err != nil {
+		response.ServerError(c, err.Error())
+		return
+	}
+
+	response.Success(c, histories)
+}
+
+func (h *Handler) FormatYAML(c *gin.Context) {
+	var req service.FormatYAMLRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	formatted, err := h.k8sService.FormatYAML(req.YAML)
+	if err != nil {
+		response.ServerError(c, err.Error())
+		return
+	}
+
+	response.Success(c, formatted)
 }
 
 func getIntParam(c *gin.Context, key string, defaultVal int) int {
