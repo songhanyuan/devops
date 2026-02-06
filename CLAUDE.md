@@ -4,7 +4,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
+Project name: **devops**, located at `~/Downloads/devops`.
+
 DevOps management platform with Go backend and React frontend. Features include host monitoring, application deployment, and configuration management.
+
+## Languages & Stack
+
+- Backend: Go (Gin + GORM + PostgreSQL)
+- Frontend: TypeScript (React 18 + Vite + Ant Design + Zustand)
+- When making changes, respect the existing language conventions in each part of the codebase.
+
+## VSCode Preferences
+
+- Always open projects/files in the **current window** (`code -r`), do not open a new window unless explicitly asked.
 
 ## Commands
 
