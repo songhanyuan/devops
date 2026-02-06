@@ -2,6 +2,8 @@ package service
 
 import (
 	"errors"
+	"log"
+	"strconv"
 
 	"devops/internal/model"
 	"devops/internal/repository"
@@ -185,15 +187,19 @@ func (s *HostService) TestConnection(id uuid.UUID) error {
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
-	addr := host.IP + ":" + string(rune(host.Port))
+	addr := host.IP + ":" + strconv.Itoa(host.Port)
 	client, err := ssh.Dial("tcp", addr, config)
 	if err != nil {
-		s.hostRepo.UpdateStatus(id, 0) // offline
+		if statusErr := s.hostRepo.UpdateStatus(id, 0); statusErr != nil {
+			log.Printf("Failed to update host status to offline: %v", statusErr)
+		}
 		return err
 	}
 	defer client.Close()
 
-	s.hostRepo.UpdateStatus(id, 1) // online
+	if statusErr := s.hostRepo.UpdateStatus(id, 1); statusErr != nil {
+		log.Printf("Failed to update host status to online: %v", statusErr)
+	}
 	return nil
 }
 

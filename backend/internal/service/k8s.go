@@ -2,18 +2,16 @@ package service
 
 import (
 	"context"
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/rand"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"strings"
 	"time"
 
 	"devops/internal/model"
+	"devops/internal/pkg/crypto"
 	"devops/internal/repository"
 
 	"github.com/google/uuid"
@@ -42,23 +40,17 @@ var (
 )
 
 type K8sService struct {
-	clusterRepo *repository.ClusterRepository
-	historyRepo *repository.K8sYAMLHistoryRepository
-	encryptKey  []byte
+	clusterRepo  *repository.ClusterRepository
+	historyRepo  *repository.K8sYAMLHistoryRepository
+	encryptor    *crypto.Encryptor
 	historyLimit int
 }
 
 func NewK8sService(clusterRepo *repository.ClusterRepository, historyRepo *repository.K8sYAMLHistoryRepository, encryptKey string) *K8sService {
-	key := []byte(encryptKey)
-	if len(key) < 32 {
-		padded := make([]byte, 32)
-		copy(padded, key)
-		key = padded
-	}
 	return &K8sService{
 		clusterRepo:  clusterRepo,
 		historyRepo:  historyRepo,
-		encryptKey:   key[:32],
+		encryptor:    crypto.NewEncryptor(encryptKey),
 		historyLimit: 20,
 	}
 }
@@ -80,7 +72,7 @@ func (s *K8sService) CreateCluster(req *CreateClusterRequest, createdBy uuid.UUI
 	}
 
 	// Encrypt kubeconfig
-	encrypted, err := s.encrypt(req.KubeConfig)
+	encrypted, err := s.encryptor.Encrypt(req.KubeConfig)
 	if err != nil {
 		return nil, fmt.Errorf("encrypt kubeconfig: %w", err)
 	}
@@ -178,7 +170,7 @@ func (s *K8sService) UpdateCluster(id uuid.UUID, req *UpdateClusterRequest) (*mo
 		cluster.APIServer = req.APIServer
 	}
 	if req.KubeConfig != "" {
-		encrypted, err := s.encrypt(req.KubeConfig)
+		encrypted, err := s.encryptor.Encrypt(req.KubeConfig)
 		if err != nil {
 			return nil, fmt.Errorf("encrypt kubeconfig: %w", err)
 		}
@@ -221,7 +213,7 @@ func (s *K8sService) TestConnection(id uuid.UUID) (*model.ClusterOverview, error
 		return nil, ErrClusterNotFound
 	}
 
-	kubeconfig, err := s.decrypt(cluster.KubeConfig)
+	kubeconfig, err := s.encryptor.Decrypt(cluster.KubeConfig)
 	if err != nil {
 		return nil, fmt.Errorf("decrypt kubeconfig: %w", err)
 	}
@@ -556,8 +548,12 @@ func (s *K8sService) ApplyYAML(id uuid.UUID, yamlText, defaultNamespace string, 
 					Username:  username,
 					CreatedAt: time.Now(),
 				}
-				_ = s.historyRepo.Create(history)
-				_ = s.historyRepo.TrimHistory(id, gvk.Kind, item.GetNamespace(), item.GetName(), s.historyLimit)
+				if err := s.historyRepo.Create(history); err != nil {
+					log.Printf("Failed to create k8s yaml history: %v", err)
+				}
+				if err := s.historyRepo.TrimHistory(id, gvk.Kind, item.GetNamespace(), item.GetName(), s.historyLimit); err != nil {
+					log.Printf("Failed to trim k8s yaml history: %v", err)
+				}
 			}
 
 			action := "applied"
@@ -749,7 +745,7 @@ func (s *K8sService) getRestConfigByClusterID(id uuid.UUID) (*rest.Config, error
 		return nil, ErrClusterNotFound
 	}
 
-	kubeconfig, err := s.decrypt(cluster.KubeConfig)
+	kubeconfig, err := s.encryptor.Decrypt(cluster.KubeConfig)
 	if err != nil {
 		return nil, fmt.Errorf("decrypt kubeconfig: %w", err)
 	}
@@ -846,45 +842,3 @@ func expandUnstructuredObjects(obj *unstructured.Unstructured) ([]*unstructured.
 	return []*unstructured.Unstructured{obj}, nil
 }
 
-// Encryption helpers
-func (s *K8sService) encrypt(plaintext string) (string, error) {
-	block, err := aes.NewCipher(s.encryptKey)
-	if err != nil {
-		return "", err
-	}
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return "", err
-	}
-	nonce := make([]byte, gcm.NonceSize())
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		return "", err
-	}
-	ciphertext := gcm.Seal(nonce, nonce, []byte(plaintext), nil)
-	return base64.StdEncoding.EncodeToString(ciphertext), nil
-}
-
-func (s *K8sService) decrypt(ciphertext string) (string, error) {
-	data, err := base64.StdEncoding.DecodeString(ciphertext)
-	if err != nil {
-		return "", err
-	}
-	block, err := aes.NewCipher(s.encryptKey)
-	if err != nil {
-		return "", err
-	}
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return "", err
-	}
-	nonceSize := gcm.NonceSize()
-	if len(data) < nonceSize {
-		return "", errors.New("ciphertext too short")
-	}
-	nonce, ciphertextBytes := data[:nonceSize], data[nonceSize:]
-	plaintext, err := gcm.Open(nil, nonce, ciphertextBytes, nil)
-	if err != nil {
-		return "", err
-	}
-	return string(plaintext), nil
-}

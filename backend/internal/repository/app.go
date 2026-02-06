@@ -55,7 +55,8 @@ func (r *AppRepository) List(page, pageSize int, envID *uuid.UUID, keyword strin
 		query = query.Where("env_id = ?", *envID)
 	}
 	if keyword != "" {
-		query = query.Where("name LIKE ? OR code LIKE ?", "%"+keyword+"%", "%"+keyword+"%")
+		kw := LikeWrap(keyword)
+		query = query.Where("name LIKE ? OR code LIKE ?", kw, kw)
 	}
 
 	if err := query.Count(&total).Error; err != nil {

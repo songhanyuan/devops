@@ -19,8 +19,8 @@ type Host struct {
 	PrivateKey  string         `json:"-" gorm:"type:text"`
 	OS          string         `json:"os" gorm:"size:50"`
 	Arch        string         `json:"arch" gorm:"size:20"`
-	Status      int            `json:"status" gorm:"default:1"` // 1: online, 0: offline, 2: unknown
-	GroupID     *uuid.UUID     `json:"group_id" gorm:"type:uuid"`
+	Status      int            `json:"status" gorm:"default:1;index"` // 1: online, 0: offline, 2: unknown
+	GroupID     *uuid.UUID     `json:"group_id" gorm:"type:uuid;index"`
 	Group       *HostGroup     `json:"group,omitempty" gorm:"foreignKey:GroupID"`
 	Tags        []HostTag      `json:"tags,omitempty" gorm:"many2many:host_tag_relations;"`
 	Description string         `json:"description" gorm:"size:255"`

@@ -57,7 +57,7 @@ func (r *AuditRepository) Query(params *AuditQueryParams) ([]model.AuditLog, int
 		query = query.Where("user_id = ?", params.UserID)
 	}
 	if params.Username != "" {
-		query = query.Where("username LIKE ?", "%"+params.Username+"%")
+		query = query.Where("username LIKE ?", LikeWrap(params.Username))
 	}
 	if params.Module != "" {
 		query = query.Where("module = ?", params.Module)
@@ -78,8 +78,8 @@ func (r *AuditRepository) Query(params *AuditQueryParams) ([]model.AuditLog, int
 		query = query.Where("created_at <= ?", params.EndTime)
 	}
 	if params.Keyword != "" {
-		query = query.Where("resource_name LIKE ? OR detail LIKE ? OR new_value LIKE ?",
-			"%"+params.Keyword+"%", "%"+params.Keyword+"%", "%"+params.Keyword+"%")
+		kw := LikeWrap(params.Keyword)
+		query = query.Where("resource_name LIKE ? OR detail LIKE ? OR new_value LIKE ?", kw, kw, kw)
 	}
 	if params.TraceID != "" {
 		query = query.Where("trace_id = ?", params.TraceID)

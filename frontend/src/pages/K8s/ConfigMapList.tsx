@@ -115,7 +115,9 @@ const ConfigMapList: React.FC = () => {
       const list = res.data.list || []
       setClusters(list)
       if (list.length > 0) setSelectedCluster(list[0].id)
-    } catch { /* handled */ }
+    } catch {
+      message.error('获取数据失败')
+    }
   }
 
   const fetchNamespaces = async () => {
@@ -123,7 +125,9 @@ const ConfigMapList: React.FC = () => {
     try {
       const res = await k8sService.getNamespaces(selectedCluster)
       setNamespaces(res.data || [])
-    } catch { /* handled */ }
+    } catch {
+      message.error('获取数据失败')
+    }
   }
 
   const fetchConfigMaps = async () => {
@@ -132,7 +136,9 @@ const ConfigMapList: React.FC = () => {
     try {
       const res = await k8sService.getConfigMaps(selectedCluster, selectedNs)
       setConfigMaps(res.data || [])
-    } catch { /* handled */ }
+    } catch {
+      message.error('获取数据失败')
+    }
     finally { setLoading(false) }
   }
 
@@ -272,7 +278,9 @@ const ConfigMapList: React.FC = () => {
       const res = await k8sService.formatYaml(selectedCluster, { yaml: yamlText })
       setYamlText(res.data || '')
       message.success('已格式化')
-    } catch { /* handled */ }
+    } catch {
+      message.error('操作失败')
+    }
     finally { setYamlActionLoading(false) }
   }
 
@@ -289,7 +297,9 @@ const ConfigMapList: React.FC = () => {
     try {
       await k8sService.applyYaml(selectedCluster, { yaml: yamlText, namespace: yamlNamespace || undefined, dry_run: true })
       message.success('校验通过')
-    } catch { /* handled */ }
+    } catch {
+      message.error('操作失败')
+    }
     finally { setYamlActionLoading(false) }
   }
 
@@ -331,7 +341,9 @@ const ConfigMapList: React.FC = () => {
       }
       setModalVisible(false)
       fetchConfigMaps()
-    } catch { /* handled */ }
+    } catch {
+      message.error('操作失败')
+    }
     finally { setSaving(false) }
   }
 
@@ -340,7 +352,9 @@ const ConfigMapList: React.FC = () => {
       await k8sService.deleteConfigMap(selectedCluster, record.namespace, record.name)
       message.success('删除成功')
       fetchConfigMaps()
-    } catch { /* handled */ }
+    } catch {
+      message.error('删除失败')
+    }
   }
 
   const columns: ColumnsType<K8sConfigMap> = [

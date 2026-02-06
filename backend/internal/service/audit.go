@@ -3,6 +3,7 @@ package service
 import (
 	"bytes"
 	"encoding/csv"
+	"fmt"
 	"time"
 
 	"devops/internal/model"
@@ -109,7 +110,7 @@ func formatDuration(ms int64) string {
 	if ms == 0 {
 		return "-"
 	}
-	return string(rune(ms)) + "ms"
+	return fmt.Sprintf("%dms", ms)
 }
 
 func truncateString(s string, maxLen int) string {

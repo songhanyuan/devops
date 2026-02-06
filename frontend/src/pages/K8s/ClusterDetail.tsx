@@ -73,7 +73,7 @@ const ClusterDetail: React.FC = () => {
       const res = await k8sService.getNodes(id)
       setNodes(res.data || [])
     } catch {
-      // handled
+      message.error('获取节点列表失败')
     }
   }
 
@@ -83,7 +83,7 @@ const ClusterDetail: React.FC = () => {
       const res = await k8sService.getNamespaces(id)
       setNamespaces(res.data || [])
     } catch {
-      // handled
+      message.error('获取命名空间失败')
     }
   }
 
@@ -93,7 +93,7 @@ const ClusterDetail: React.FC = () => {
       const res = await k8sService.getDeployments(id, selectedNs)
       setDeployments(res.data || [])
     } catch {
-      // handled
+      message.error('获取 Deployments 失败')
     }
   }
 
@@ -103,7 +103,7 @@ const ClusterDetail: React.FC = () => {
       const res = await k8sService.getPods(id, selectedNs)
       setPods(res.data || [])
     } catch {
-      // handled
+      message.error('获取 Pods 失败')
     }
   }
 
@@ -113,7 +113,7 @@ const ClusterDetail: React.FC = () => {
       const res = await k8sService.getServices(id, selectedNs)
       setServices(res.data || [])
     } catch {
-      // handled
+      message.error('获取 Services 失败')
     }
   }
 

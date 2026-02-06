@@ -55,8 +55,8 @@ func (r *HostRepository) List(page, pageSize int, groupID *uuid.UUID, keyword st
 		query = query.Where("group_id = ?", *groupID)
 	}
 	if keyword != "" {
-		query = query.Where("name LIKE ? OR ip LIKE ? OR hostname LIKE ?",
-			"%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%")
+		kw := LikeWrap(keyword)
+		query = query.Where("name LIKE ? OR ip LIKE ? OR hostname LIKE ?", kw, kw, kw)
 	}
 	if status != nil {
 		query = query.Where("status = ?", *status)

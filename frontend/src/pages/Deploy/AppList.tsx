@@ -37,7 +37,7 @@ const AppList: React.FC = () => {
       setApps(res.data.list || [])
       setTotal(res.data.total)
     } catch {
-      // Error handled
+      message.error('获取应用列表失败')
     } finally {
       setLoading(false)
     }
@@ -48,7 +48,7 @@ const AppList: React.FC = () => {
       const res = await appService.listEnvironments()
       setEnvs(res.data || [])
     } catch {
-      // Error handled
+      message.error('获取环境列表失败')
     }
   }
 
@@ -76,7 +76,7 @@ const AppList: React.FC = () => {
       message.success('删除成功')
       fetchApps()
     } catch {
-      // Error handled
+      message.error('删除失败')
     }
   }
 
@@ -93,7 +93,7 @@ const AppList: React.FC = () => {
       setModalVisible(false)
       fetchApps()
     } catch {
-      // Validation error
+      message.error('提交失败')
     }
   }
 

@@ -58,7 +58,8 @@ func (r *ConfigRepository) List(page, pageSize int, envCode, appCode, keyword st
 		query = query.Where("app_code = ?", appCode)
 	}
 	if keyword != "" {
-		query = query.Where("key LIKE ? OR description LIKE ?", "%"+keyword+"%", "%"+keyword+"%")
+		kw := LikeWrap(keyword)
+		query = query.Where("key LIKE ? OR description LIKE ?", kw, kw)
 	}
 
 	if err := query.Count(&total).Error; err != nil {

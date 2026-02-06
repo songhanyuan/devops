@@ -113,7 +113,7 @@ const SecretList: React.FC = () => {
       const list = res.data.list || []
       setClusters(list)
       if (list.length > 0) setSelectedCluster(list[0].id)
-    } catch { /* handled */ }
+    } catch { message.error('获取数据失败') }
   }
 
   const fetchNamespaces = async () => {
@@ -121,7 +121,7 @@ const SecretList: React.FC = () => {
     try {
       const res = await k8sService.getNamespaces(selectedCluster)
       setNamespaces(res.data || [])
-    } catch { /* handled */ }
+    } catch { message.error('获取数据失败') }
   }
 
   const fetchSecrets = async () => {
@@ -130,7 +130,7 @@ const SecretList: React.FC = () => {
     try {
       const res = await k8sService.getSecrets(selectedCluster, selectedNs)
       setSecrets(res.data || [])
-    } catch { /* handled */ }
+    } catch { message.error('获取数据失败') }
     finally { setLoading(false) }
   }
 
@@ -188,7 +188,7 @@ const SecretList: React.FC = () => {
       setCreateVisible(false)
       form.resetFields()
       fetchSecrets()
-    } catch { /* handled */ }
+    } catch { message.error('操作失败') }
     finally { setCreating(false) }
   }
 
@@ -197,7 +197,7 @@ const SecretList: React.FC = () => {
       await k8sService.deleteSecret(selectedCluster, record.namespace, record.name)
       message.success('删除成功')
       fetchSecrets()
-    } catch { /* handled */ }
+    } catch { message.error('删除失败') }
   }
 
   const loadDetailYaml = async (force = false) => {
@@ -273,7 +273,7 @@ const SecretList: React.FC = () => {
       const res = await k8sService.formatYaml(selectedCluster, { yaml: yamlText })
       setYamlText(res.data || '')
       message.success('已格式化')
-    } catch { /* handled */ }
+    } catch { message.error('操作失败') }
     finally { setYamlActionLoading(false) }
   }
 
@@ -290,7 +290,7 @@ const SecretList: React.FC = () => {
     try {
       await k8sService.applyYaml(selectedCluster, { yaml: yamlText, namespace: yamlNamespace || undefined, dry_run: true })
       message.success('校验通过')
-    } catch { /* handled */ }
+    } catch { message.error('操作失败') }
     finally { setYamlActionLoading(false) }
   }
 
@@ -330,7 +330,7 @@ const SecretList: React.FC = () => {
       const res = await k8sService.formatYaml(selectedCluster, { yaml: yamlEditorText })
       setYamlEditorText(res.data || '')
       message.success('已格式化')
-    } catch { /* handled */ }
+    } catch { message.error('操作失败') }
     finally { setYamlEditorLoading(false) }
   }
 
@@ -347,7 +347,7 @@ const SecretList: React.FC = () => {
     try {
       await k8sService.applyYaml(selectedCluster, { yaml: yamlEditorText, dry_run: true })
       message.success('校验通过')
-    } catch { /* handled */ }
+    } catch { message.error('操作失败') }
     finally { setYamlEditorLoading(false) }
   }
 
@@ -366,7 +366,7 @@ const SecretList: React.FC = () => {
       message.success('YAML 已应用')
       setYamlVisible(false)
       fetchSecrets()
-    } catch { /* handled */ }
+    } catch { message.error('操作失败') }
     finally { setYamlEditorLoading(false) }
   }
 

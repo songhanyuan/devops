@@ -59,7 +59,7 @@ const ConfigList: React.FC = () => {
       setConfigs(res.data.list || [])
       setTotal(res.data.total)
     } catch {
-      // handled
+      message.error('获取配置列表失败')
     } finally {
       setLoading(false)
     }
@@ -88,7 +88,7 @@ const ConfigList: React.FC = () => {
       message.success('删除成功')
       fetchConfigs()
     } catch {
-      // handled
+      message.error('删除失败')
     }
   }
 
@@ -105,7 +105,7 @@ const ConfigList: React.FC = () => {
       setModalVisible(false)
       fetchConfigs()
     } catch {
-      // validation
+      message.error('提交失败')
     }
   }
 
@@ -116,7 +116,7 @@ const ConfigList: React.FC = () => {
       const res = await configService.getHistory(record.id, 20)
       setHistory(res.data || [])
     } catch {
-      // handled
+      message.error('获取变更历史失败')
     } finally {
       setHistoryLoading(false)
     }

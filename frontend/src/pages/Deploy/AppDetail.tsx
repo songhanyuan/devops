@@ -51,7 +51,7 @@ const AppDetail: React.FC = () => {
       const res = await appService.get(id)
       setApp(res.data)
     } catch {
-      // handled
+      message.error('获取应用信息失败')
     }
   }
 
@@ -61,7 +61,7 @@ const AppDetail: React.FC = () => {
       const res = await appService.listDeployments(id!, { page: 1, page_size: 50 })
       setDeployments(res.data.list || [])
     } catch {
-      // handled
+      message.error('获取部署记录失败')
     } finally {
       setLoading(false)
     }
@@ -80,7 +80,7 @@ const AppDetail: React.FC = () => {
       setDeployModalVisible(false)
       fetchDeployments()
     } catch {
-      // validation
+      message.error('部署失败')
     }
   }
 

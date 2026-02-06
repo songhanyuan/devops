@@ -59,7 +59,9 @@ const PodList: React.FC = () => {
       const list = res.data.list || []
       setClusters(list)
       if (list.length > 0) setSelectedCluster(list[0].id)
-    } catch { /* handled */ }
+    } catch {
+      message.error('获取数据失败')
+    }
   }
 
   const fetchNamespaces = async () => {
@@ -67,7 +69,9 @@ const PodList: React.FC = () => {
     try {
       const res = await k8sService.getNamespaces(selectedCluster)
       setNamespaces(res.data || [])
-    } catch { /* handled */ }
+    } catch {
+      message.error('获取数据失败')
+    }
   }
 
   const fetchPods = async () => {
@@ -76,7 +80,9 @@ const PodList: React.FC = () => {
     try {
       const res = await k8sService.getPods(selectedCluster, selectedNs)
       setPods(res.data || [])
-    } catch { /* handled */ }
+    } catch {
+      message.error('获取数据失败')
+    }
     finally { setLoading(false) }
   }
 
@@ -187,7 +193,9 @@ const PodList: React.FC = () => {
       const res = await k8sService.formatYaml(selectedCluster, { yaml: yamlEditorText })
       setYamlEditorText(res.data || '')
       message.success('已格式化')
-    } catch { /* handled */ }
+    } catch {
+      message.error('操作失败')
+    }
     finally { setYamlEditorLoading(false) }
   }
 
@@ -204,7 +212,9 @@ const PodList: React.FC = () => {
     try {
       await k8sService.applyYaml(selectedCluster, { yaml: yamlEditorText, dry_run: true })
       message.success('校验通过')
-    } catch { /* handled */ }
+    } catch {
+      message.error('操作失败')
+    }
     finally { setYamlEditorLoading(false) }
   }
 
@@ -223,7 +233,9 @@ const PodList: React.FC = () => {
       message.success('YAML 已应用')
       setYamlVisible(false)
       fetchPods()
-    } catch { /* handled */ }
+    } catch {
+      message.error('操作失败')
+    }
     finally { setYamlEditorLoading(false) }
   }
 

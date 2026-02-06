@@ -48,7 +48,7 @@ const UserList: React.FC = () => {
       setUsers(res.data.list || [])
       setTotal(res.data.total)
     } catch {
-      // Error handled by interceptor
+      message.error('获取用户列表失败')
     } finally {
       setLoading(false)
     }
@@ -59,7 +59,7 @@ const UserList: React.FC = () => {
       const res = await userService.listRoles()
       setRoles(res.data || [])
     } catch {
-      // Error handled
+      message.error('获取角色列表失败')
     }
   }
 
@@ -89,7 +89,7 @@ const UserList: React.FC = () => {
       message.success('删除成功')
       fetchUsers()
     } catch {
-      // Error handled
+      message.error('删除失败')
     }
   }
 
@@ -118,7 +118,7 @@ const UserList: React.FC = () => {
       setModalVisible(false)
       fetchUsers()
     } catch {
-      // Validation error
+      message.error('提交失败')
     }
   }
 
@@ -129,7 +129,7 @@ const UserList: React.FC = () => {
       message.success('密码重置成功')
       setPasswordModalVisible(false)
     } catch {
-      // Error handled
+      message.error('密码重置失败')
     }
   }
 
@@ -139,7 +139,7 @@ const UserList: React.FC = () => {
       message.success('状态更新成功')
       fetchUsers()
     } catch {
-      // Error handled
+      message.error('状态更新失败')
     }
   }
 

@@ -73,8 +73,7 @@ export default function RolePermissionList() {
       } else if (Array.isArray(permsRes)) {
         setPermissions(permsRes)
       }
-    } catch (e) {
-      console.error('获取数据失败:', e)
+    } catch {
       message.error('获取数据失败')
     } finally {
       setLoading(false)

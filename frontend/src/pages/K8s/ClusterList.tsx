@@ -54,7 +54,7 @@ const ClusterList: React.FC = () => {
       setClusters(res.data.list || [])
       setTotal(res.data.total)
     } catch {
-      // handled
+      message.error('获取集群列表失败')
     } finally {
       setLoading(false)
     }
@@ -88,7 +88,7 @@ const ClusterList: React.FC = () => {
       message.success('删除成功')
       fetchClusters()
     } catch {
-      // handled
+      message.error('删除失败')
     }
   }
 
@@ -105,7 +105,7 @@ const ClusterList: React.FC = () => {
       setModalVisible(false)
       fetchClusters()
     } catch {
-      // validation
+      message.error('提交失败')
     }
   }
 

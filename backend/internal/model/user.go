@@ -16,7 +16,7 @@ type User struct {
 	RealName  string         `json:"real_name" gorm:"size:50"`
 	Avatar    string         `json:"avatar" gorm:"size:255"`
 	Status    int            `json:"status" gorm:"default:1"` // 1: active, 0: disabled
-	RoleID    uuid.UUID      `json:"role_id" gorm:"type:uuid"`
+	RoleID    uuid.UUID      `json:"role_id" gorm:"type:uuid;index"`
 	Role      *Role          `json:"role,omitempty" gorm:"foreignKey:RoleID"`
 	Groups    []UserGroup    `json:"groups,omitempty" gorm:"many2many:user_group_members;"`
 	LastLogin *time.Time     `json:"last_login"`

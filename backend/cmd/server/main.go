@@ -1,8 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"devops/internal/config"
 	auditHandler "devops/internal/handler/audit"
@@ -43,7 +49,6 @@ func main() {
 	userRepo := repository.NewUserRepository(db)
 	roleRepo := repository.NewRoleRepository(db)
 	permRepo := repository.NewPermissionRepository(db)
-	resourcePermRepo := repository.NewResourcePermissionRepository(db)
 	groupRepo := repository.NewUserGroupRepository(db)
 	auditRepo := repository.NewAuditRepository(db)
 	hostRepo := repository.NewHostRepository(db)
@@ -69,7 +74,6 @@ func main() {
 	authService := service.NewAuthService(userRepo, roleRepo, jwtManager)
 	userService := service.NewUserService(userRepo, roleRepo)
 	roleService := service.NewRoleService(roleRepo, permRepo)
-	permService := service.NewPermissionService(permRepo, resourcePermRepo, roleRepo, groupRepo)
 	groupService := service.NewGroupService(groupRepo)
 	auditService := service.NewAuditService(auditRepo)
 	hostService := service.NewHostService(hostRepo, hostGroupRepo, hostTagRepo)
@@ -91,9 +95,6 @@ func main() {
 		log.Printf("Failed to init default permissions: %v", err)
 	}
 
-	// Initialize permission checker
-	permChecker := middleware.NewPermissionChecker(permService)
-
 	// Initialize handlers
 	authH := authHandler.NewHandler(authService)
 	userH := userHandler.NewHandler(userService, roleService)
@@ -114,8 +115,17 @@ func main() {
 	// Middleware
 	r.Use(middleware.CORS())
 
-	// Health check
+	// Health check with database verification
 	r.GET("/health", func(c *gin.Context) {
+		sqlDB, err := db.DB()
+		if err != nil {
+			c.JSON(503, gin.H{"status": "error", "message": "database unavailable"})
+			return
+		}
+		if err := sqlDB.Ping(); err != nil {
+			c.JSON(503, gin.H{"status": "error", "message": "database ping failed"})
+			return
+		}
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 
@@ -157,15 +167,32 @@ func main() {
 		k8sH.RegisterRoutes(protected)
 	}
 
-	// Keep permChecker for future use
-	_ = permChecker
-
-	// Start server
+	// Start server with graceful shutdown
 	addr := fmt.Sprintf(":%s", cfg.Server.Port)
-	log.Printf("Server starting on %s", addr)
-	if err := r.Run(addr); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+	srv := &http.Server{
+		Addr:    addr,
+		Handler: r,
 	}
+
+	go func() {
+		log.Printf("Server starting on %s", addr)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Failed to start server: %v", err)
+		}
+	}()
+
+	// Wait for interrupt signal
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Println("Shutting down server...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("Server forced to shutdown: %v", err)
+	}
+	log.Println("Server exited")
 }
 
 // initDefaultPermissions 初始化默认权限

@@ -1,42 +1,32 @@
 package service
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/rand"
-	"encoding/base64"
 	"errors"
-	"io"
+	"log"
 
 	"devops/internal/model"
+	"devops/internal/pkg/crypto"
 	"devops/internal/repository"
 
 	"github.com/google/uuid"
 )
 
 var (
-	ErrConfigNotFound = errors.New("config item not found")
+	ErrConfigNotFound  = errors.New("config item not found")
 	ErrConfigKeyExists = errors.New("config key already exists")
 )
 
 type ConfigService struct {
 	configRepo  *repository.ConfigRepository
 	historyRepo *repository.ConfigHistoryRepository
-	encryptKey  []byte
+	encryptor   *crypto.Encryptor
 }
 
 func NewConfigService(configRepo *repository.ConfigRepository, historyRepo *repository.ConfigHistoryRepository, encryptKey string) *ConfigService {
-	key := []byte(encryptKey)
-	if len(key) < 32 {
-		// Pad to 32 bytes for AES-256
-		padded := make([]byte, 32)
-		copy(padded, key)
-		key = padded
-	}
 	return &ConfigService{
 		configRepo:  configRepo,
 		historyRepo: historyRepo,
-		encryptKey:  key[:32],
+		encryptor:   crypto.NewEncryptor(encryptKey),
 	}
 }
 
@@ -63,7 +53,7 @@ func (s *ConfigService) Create(req *CreateConfigRequest, createdBy uuid.UUID, us
 
 	value := req.Value
 	if req.IsSecret && value != "" {
-		encrypted, err := s.encrypt(value)
+		encrypted, err := s.encryptor.Encrypt(value)
 		if err != nil {
 			return nil, err
 		}
@@ -100,7 +90,9 @@ func (s *ConfigService) Create(req *CreateConfigRequest, createdBy uuid.UUID, us
 		CreatedBy: createdBy,
 		Username:  username,
 	}
-	s.historyRepo.Create(history)
+	if err := s.historyRepo.Create(history); err != nil {
+		log.Printf("Failed to create config history: %v", err)
+	}
 
 	return config, nil
 }
@@ -118,7 +110,7 @@ func (s *ConfigService) Update(id uuid.UUID, req *UpdateConfigRequest, updatedBy
 
 	oldValue := config.Value
 	if config.IsSecret {
-		decrypted, err := s.decrypt(oldValue)
+		decrypted, err := s.encryptor.Decrypt(oldValue)
 		if err == nil {
 			oldValue = decrypted
 		}
@@ -126,7 +118,7 @@ func (s *ConfigService) Update(id uuid.UUID, req *UpdateConfigRequest, updatedBy
 
 	newValue := req.Value
 	if config.IsSecret && newValue != "" {
-		encrypted, err := s.encrypt(newValue)
+		encrypted, err := s.encryptor.Encrypt(newValue)
 		if err != nil {
 			return nil, err
 		}
@@ -159,7 +151,9 @@ func (s *ConfigService) Update(id uuid.UUID, req *UpdateConfigRequest, updatedBy
 		CreatedBy: updatedBy,
 		Username:  username,
 	}
-	s.historyRepo.Create(history)
+	if err := s.historyRepo.Create(history); err != nil {
+		log.Printf("Failed to create config history: %v", err)
+	}
 
 	return config, nil
 }
@@ -183,7 +177,9 @@ func (s *ConfigService) Delete(id uuid.UUID, deletedBy uuid.UUID, username strin
 		CreatedBy: deletedBy,
 		Username:  username,
 	}
-	s.historyRepo.Create(history)
+	if err := s.historyRepo.Create(history); err != nil {
+		log.Printf("Failed to create config history: %v", err)
+	}
 
 	return s.configRepo.Delete(id)
 }
@@ -195,7 +191,7 @@ func (s *ConfigService) GetByID(id uuid.UUID, decrypt bool) (*model.ConfigItem, 
 	}
 
 	if decrypt && config.IsSecret {
-		decrypted, err := s.decrypt(config.Value)
+		decrypted, err := s.encryptor.Decrypt(config.Value)
 		if err == nil {
 			config.Value = decrypted
 		}
@@ -217,7 +213,7 @@ func (s *ConfigService) GetByEnvAndApp(envCode, appCode string, decrypt bool) ([
 	if decrypt {
 		for i := range configs {
 			if configs[i].IsSecret {
-				decrypted, err := s.decrypt(configs[i].Value)
+				decrypted, err := s.encryptor.Decrypt(configs[i].Value)
 				if err == nil {
 					configs[i].Value = decrypted
 				}
@@ -230,55 +226,4 @@ func (s *ConfigService) GetByEnvAndApp(envCode, appCode string, decrypt bool) ([
 
 func (s *ConfigService) GetHistory(configID uuid.UUID, limit int) ([]model.ConfigHistory, error) {
 	return s.historyRepo.ListByConfigID(configID, limit)
-}
-
-// Encryption helpers
-func (s *ConfigService) encrypt(plaintext string) (string, error) {
-	block, err := aes.NewCipher(s.encryptKey)
-	if err != nil {
-		return "", err
-	}
-
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return "", err
-	}
-
-	nonce := make([]byte, gcm.NonceSize())
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		return "", err
-	}
-
-	ciphertext := gcm.Seal(nonce, nonce, []byte(plaintext), nil)
-	return base64.StdEncoding.EncodeToString(ciphertext), nil
-}
-
-func (s *ConfigService) decrypt(ciphertext string) (string, error) {
-	data, err := base64.StdEncoding.DecodeString(ciphertext)
-	if err != nil {
-		return "", err
-	}
-
-	block, err := aes.NewCipher(s.encryptKey)
-	if err != nil {
-		return "", err
-	}
-
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return "", err
-	}
-
-	nonceSize := gcm.NonceSize()
-	if len(data) < nonceSize {
-		return "", errors.New("ciphertext too short")
-	}
-
-	nonce, ciphertextBytes := data[:nonceSize], data[nonceSize:]
-	plaintext, err := gcm.Open(nil, nonce, ciphertextBytes, nil)
-	if err != nil {
-		return "", err
-	}
-
-	return string(plaintext), nil
 }

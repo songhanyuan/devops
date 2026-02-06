@@ -121,7 +121,9 @@ const IngressList: React.FC = () => {
       const list = res.data.list || []
       setClusters(list)
       if (list.length > 0) setSelectedCluster(list[0].id)
-    } catch { /* handled */ }
+    } catch {
+      message.error('获取数据失败')
+    }
   }
 
   const fetchNamespaces = async () => {
@@ -129,7 +131,9 @@ const IngressList: React.FC = () => {
     try {
       const res = await k8sService.getNamespaces(selectedCluster)
       setNamespaces(res.data || [])
-    } catch { /* handled */ }
+    } catch {
+      message.error('获取数据失败')
+    }
   }
 
   const fetchIngresses = async () => {
@@ -138,7 +142,9 @@ const IngressList: React.FC = () => {
     try {
       const res = await k8sService.getIngresses(selectedCluster, selectedNs)
       setIngresses(res.data || [])
-    } catch { /* handled */ }
+    } catch {
+      message.error('获取数据失败')
+    }
     finally { setLoading(false) }
   }
 
@@ -185,7 +191,9 @@ const IngressList: React.FC = () => {
       setCreateVisible(false)
       form.resetFields()
       fetchIngresses()
-    } catch { /* handled */ }
+    } catch {
+      message.error('操作失败')
+    }
     finally { setCreating(false) }
   }
 
@@ -194,7 +202,9 @@ const IngressList: React.FC = () => {
       await k8sService.deleteIngress(selectedCluster, record.namespace, record.name)
       message.success('删除成功')
       fetchIngresses()
-    } catch { /* handled */ }
+    } catch {
+      message.error('删除失败')
+    }
   }
 
   const loadDetailYaml = async (force = false) => {
@@ -270,7 +280,9 @@ const IngressList: React.FC = () => {
       const res = await k8sService.formatYaml(selectedCluster, { yaml: yamlText })
       setYamlText(res.data || '')
       message.success('已格式化')
-    } catch { /* handled */ }
+    } catch {
+      message.error('操作失败')
+    }
     finally { setYamlActionLoading(false) }
   }
 
@@ -287,7 +299,9 @@ const IngressList: React.FC = () => {
     try {
       await k8sService.applyYaml(selectedCluster, { yaml: yamlText, namespace: yamlNamespace || undefined, dry_run: true })
       message.success('校验通过')
-    } catch { /* handled */ }
+    } catch {
+      message.error('操作失败')
+    }
     finally { setYamlActionLoading(false) }
   }
 
@@ -327,7 +341,9 @@ const IngressList: React.FC = () => {
       const res = await k8sService.formatYaml(selectedCluster, { yaml: yamlEditorText })
       setYamlEditorText(res.data || '')
       message.success('已格式化')
-    } catch { /* handled */ }
+    } catch {
+      message.error('操作失败')
+    }
     finally { setYamlLoading(false) }
   }
 
@@ -344,7 +360,9 @@ const IngressList: React.FC = () => {
     try {
       await k8sService.applyYaml(selectedCluster, { yaml: yamlEditorText, dry_run: true })
       message.success('校验通过')
-    } catch { /* handled */ }
+    } catch {
+      message.error('操作失败')
+    }
     finally { setYamlLoading(false) }
   }
 
@@ -363,7 +381,9 @@ const IngressList: React.FC = () => {
       message.success('YAML 已应用')
       setYamlVisible(false)
       fetchIngresses()
-    } catch { /* handled */ }
+    } catch {
+      message.error('操作失败')
+    }
     finally { setYamlLoading(false) }
   }
 

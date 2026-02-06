@@ -122,7 +122,7 @@ const PipelineList: React.FC = () => {
       try {
         const res = await appService.list({ page: 1, page_size: 100 })
         setApps(res.data.list || [])
-      } catch { /* handled */ }
+      } catch { message.error('获取应用列表失败') }
     }
     fetchApps()
   }, [])
@@ -154,7 +154,7 @@ const PipelineList: React.FC = () => {
       setPipelines([newPipeline, ...pipelines])
       setModalVisible(false)
       message.success('流水线已创建')
-    } catch { /* validation */ }
+    } catch { message.error('创建流水线失败') }
   }
 
   const handleRun = (p: Pipeline) => {

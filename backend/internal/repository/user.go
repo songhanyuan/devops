@@ -60,8 +60,8 @@ func (r *UserRepository) List(page, pageSize int, keyword string) ([]model.User,
 
 	query := r.db.Model(&model.User{}).Preload("Role")
 	if keyword != "" {
-		query = query.Where("username LIKE ? OR email LIKE ? OR real_name LIKE ?",
-			"%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%")
+		kw := LikeWrap(keyword)
+		query = query.Where("username LIKE ? OR email LIKE ? OR real_name LIKE ?", kw, kw, kw)
 	}
 
 	if err := query.Count(&total).Error; err != nil {

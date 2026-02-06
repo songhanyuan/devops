@@ -20,10 +20,10 @@ type Application struct {
 	StartCmd    string         `json:"start_cmd" gorm:"size:500"`
 	StopCmd     string         `json:"stop_cmd" gorm:"size:500"`
 	HealthCheck string         `json:"health_check" gorm:"size:255"` // health check URL
-	EnvID       *uuid.UUID     `json:"env_id" gorm:"type:uuid"`
+	EnvID       *uuid.UUID     `json:"env_id" gorm:"type:uuid;index"`
 	Env         *Environment   `json:"env,omitempty" gorm:"foreignKey:EnvID"`
 	Hosts       []Host         `json:"hosts,omitempty" gorm:"many2many:app_hosts;"`
-	Status      int            `json:"status" gorm:"default:1"` // 1: enabled, 0: disabled
+	Status      int            `json:"status" gorm:"default:1;index"` // 1: enabled, 0: disabled
 	Description string         `json:"description" gorm:"size:255"`
 	CreatedBy   uuid.UUID      `json:"created_by" gorm:"type:uuid"`
 	CreatedAt   time.Time      `json:"created_at"`

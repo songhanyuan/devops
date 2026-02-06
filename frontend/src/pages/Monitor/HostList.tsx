@@ -49,7 +49,7 @@ const HostList: React.FC = () => {
       setHosts(res.data.list || [])
       setTotal(res.data.total)
     } catch {
-      // Error handled
+      message.error('获取主机列表失败')
     } finally {
       setLoading(false)
     }
@@ -60,7 +60,7 @@ const HostList: React.FC = () => {
       const res = await hostService.listGroups()
       setGroups(res.data || [])
     } catch {
-      // Error handled
+      message.error('获取分组列表失败')
     }
   }
 
@@ -88,7 +88,7 @@ const HostList: React.FC = () => {
       message.success('删除成功')
       fetchHosts()
     } catch {
-      // Error handled
+      message.error('删除失败')
     }
   }
 
@@ -98,7 +98,7 @@ const HostList: React.FC = () => {
       message.success('连接成功')
       fetchHosts()
     } catch {
-      // Error handled
+      message.error('连接测试失败')
     }
   }
 
@@ -115,7 +115,7 @@ const HostList: React.FC = () => {
       setModalVisible(false)
       fetchHosts()
     } catch {
-      // Validation error
+      message.error('提交失败')
     }
   }
 
