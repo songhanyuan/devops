@@ -163,9 +163,11 @@ const AppDetail: React.FC = () => {
             type="primary"
             icon={<RocketOutlined />}
             onClick={() => {
-              deployForm.resetFields()
-              deployForm.setFieldsValue({ branch: app?.branch })
               setDeployModalVisible(true)
+              setTimeout(() => {
+                deployForm.resetFields()
+                deployForm.setFieldsValue({ branch: app?.branch })
+              }, 0)
             }}
           >
             发起部署

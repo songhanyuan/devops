@@ -295,14 +295,12 @@ func (h *Handler) ApplyYAML(c *gin.Context) {
 	}
 
 	claims := middleware.GetCurrentUser(c)
-	var createdBy uuid.UUID
-	var username string
-	if claims != nil {
-		createdBy = claims.UserID
-		username = claims.Username
+	if claims == nil {
+		response.Error(c, 4010, "未登录")
+		return
 	}
 
-	results, err := h.k8sService.ApplyYAML(id, req.YAML, req.Namespace, req.DryRun, req.Action, createdBy, username)
+	results, err := h.k8sService.ApplyYAML(id, req.YAML, req.Namespace, req.DryRun, req.Action, claims.UserID, claims.Username)
 	if err != nil {
 		response.ServerError(c, err.Error())
 		return

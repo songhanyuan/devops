@@ -1,6 +1,7 @@
 package audit
 
 import (
+	"strconv"
 	"time"
 
 	"devops/internal/middleware"
@@ -218,25 +219,9 @@ func parseIntParam(c *gin.Context, key string, defaultVal int) int {
 	if val == "" {
 		return defaultVal
 	}
-	var result int
-	if _, err := c.GetQuery(key); err {
+	n, err := strconv.Atoi(val)
+	if err != nil {
 		return defaultVal
 	}
-	if n, err := parseInt(val); err == nil {
-		result = n
-	} else {
-		result = defaultVal
-	}
-	return result
-}
-
-func parseInt(s string) (int, error) {
-	var n int
-	for _, c := range s {
-		if c < '0' || c > '9' {
-			return 0, nil
-		}
-		n = n*10 + int(c-'0')
-	}
-	return n, nil
+	return n
 }

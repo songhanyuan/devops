@@ -30,8 +30,8 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
 		configs.GET("/:id/history", h.GetConfigHistory)
 	}
 
-	// For application to fetch configs
-	r.GET("/configs/fetch", h.FetchConfigs)
+	// For application to fetch configs (requires auth)
+	configs.GET("/fetch", h.FetchConfigs)
 }
 
 func (h *Handler) ListConfigs(c *gin.Context) {

@@ -165,8 +165,7 @@ func (s *RoleService) Create(name, description string) (*model.Role, error) {
 }
 
 func generateRoleCode(name string) string {
-	// 简单生成：使用时间戳 + 随机数
-	return fmt.Sprintf("role_%d", time.Now().UnixNano()/1000000)
+	return fmt.Sprintf("role_%d_%s", time.Now().UnixNano(), uuid.New().String()[:8])
 }
 
 func (s *RoleService) Update(id uuid.UUID, name, description string) (*model.Role, error) {

@@ -184,7 +184,7 @@ func (s *HostService) TestConnection(id uuid.UUID) error {
 	config := &ssh.ClientConfig{
 		User: host.Username,
 		Auth: []ssh.AuthMethod{authMethod},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // TODO: implement known_hosts verification
 	}
 
 	addr := host.IP + ":" + strconv.Itoa(host.Port)

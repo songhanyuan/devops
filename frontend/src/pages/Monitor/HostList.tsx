@@ -40,12 +40,14 @@ const HostList: React.FC = () => {
   const [pageSize, setPageSize] = useState(20)
   const [modalVisible, setModalVisible] = useState(false)
   const [editingHost, setEditingHost] = useState<Host | null>(null)
+  const [keyword, setKeyword] = useState('')
+  const [authType, setAuthType] = useState('password')
   const [form] = Form.useForm()
 
   const fetchHosts = async () => {
     setLoading(true)
     try {
-      const res = await hostService.list({ page, page_size: pageSize })
+      const res = await hostService.list({ page, page_size: pageSize, keyword: keyword || undefined })
       setHosts(res.data.list || [])
       setTotal(res.data.total)
     } catch {
@@ -67,7 +69,7 @@ const HostList: React.FC = () => {
   useEffect(() => {
     fetchHosts()
     fetchGroups()
-  }, [page, pageSize])
+  }, [page, pageSize, keyword])
 
   const handleAdd = () => {
     setEditingHost(null)
@@ -320,10 +322,12 @@ const HostList: React.FC = () => {
       <Card className="section-card" bordered={false}>
         <div className="toolbar">
           <div className="toolbar-left">
-            <Input
+            <Input.Search
               placeholder="搜索主机..."
               prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
               style={{ width: 240 }}
+              allowClear
+              onSearch={(v) => { setPage(1); setKeyword(v) }}
             />
           </div>
           <div className="toolbar-right" />
@@ -380,16 +384,22 @@ const HostList: React.FC = () => {
             </Col>
             <Col span={8}>
               <Form.Item name="auth_type" label="认证方式">
-                <Select>
+                <Select onChange={(v) => setAuthType(v)}>
                   <Select.Option value="password">密码</Select.Option>
                   <Select.Option value="key">密钥</Select.Option>
                 </Select>
               </Form.Item>
             </Col>
           </Row>
-          <Form.Item name="password" label="密码">
-            <Input.Password placeholder="SSH 密码" />
-          </Form.Item>
+          {authType === 'password' ? (
+            <Form.Item name="password" label="密码">
+              <Input.Password placeholder="SSH 密码" />
+            </Form.Item>
+          ) : (
+            <Form.Item name="private_key" label="私钥">
+              <Input.TextArea rows={4} placeholder="粘贴 SSH 私钥内容" />
+            </Form.Item>
+          )}
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item name="group_id" label="分组">

@@ -33,7 +33,9 @@ api.interceptors.response.use(
   (error: AxiosError<{ message?: string }>) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token')
-      window.location.href = '/login'
+      if (window.location.pathname !== '/login') {
+        window.location.replace('/login')
+      }
       return Promise.reject(error)
     }
     message.error(error.response?.data?.message || error.message || '网络错误')

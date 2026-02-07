@@ -77,9 +77,14 @@ func AuditLog(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		// Async save to database
-		go func() {
-			db.Create(auditLog)
-		}()
+		go func(log *model.AuditLog) {
+			defer func() {
+				if r := recover(); r != nil {
+					// Prevent goroutine panic from crashing the process
+				}
+			}()
+			db.Create(log)
+		}(auditLog)
 	}
 }
 

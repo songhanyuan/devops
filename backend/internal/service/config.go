@@ -82,7 +82,7 @@ func (s *ConfigService) Create(req *CreateConfigRequest, createdBy uuid.UUID, us
 		ConfigID:  config.ID,
 		Key:       config.Key,
 		OldValue:  "",
-		NewValue:  req.Value, // Store original value in history
+		NewValue:  func() string { if req.IsSecret { return "[encrypted]" }; return req.Value }(),
 		EnvCode:   config.EnvCode,
 		AppCode:   config.AppCode,
 		Version:   1,
@@ -108,12 +108,10 @@ func (s *ConfigService) Update(id uuid.UUID, req *UpdateConfigRequest, updatedBy
 		return nil, ErrConfigNotFound
 	}
 
+	// Don't store plaintext secrets in history
 	oldValue := config.Value
 	if config.IsSecret {
-		decrypted, err := s.encryptor.Decrypt(oldValue)
-		if err == nil {
-			oldValue = decrypted
-		}
+		oldValue = "[encrypted]"
 	}
 
 	newValue := req.Value
@@ -143,7 +141,7 @@ func (s *ConfigService) Update(id uuid.UUID, req *UpdateConfigRequest, updatedBy
 		ConfigID:  config.ID,
 		Key:       config.Key,
 		OldValue:  oldValue,
-		NewValue:  req.Value,
+		NewValue:  func() string { if config.IsSecret { return "[encrypted]" }; return req.Value }(),
 		EnvCode:   config.EnvCode,
 		AppCode:   config.AppCode,
 		Version:   config.Version,
@@ -168,7 +166,7 @@ func (s *ConfigService) Delete(id uuid.UUID, deletedBy uuid.UUID, username strin
 	history := &model.ConfigHistory{
 		ConfigID:  config.ID,
 		Key:       config.Key,
-		OldValue:  config.Value,
+		OldValue:  func() string { if config.IsSecret { return "[encrypted]" }; return config.Value }(),
 		NewValue:  "",
 		EnvCode:   config.EnvCode,
 		AppCode:   config.AppCode,
